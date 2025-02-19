@@ -32,7 +32,8 @@ def main() -> None:
 
         with PdfPages("tmp.pdf") as pdf:
             for index in range(MAX_EVENTS):
-                draw(branches["simhit_x"][index],
+                draw(index,
+                     branches["simhit_x"][index],
                      branches["simhit_y"][index],
                      branches["simhit_z"][index],
                      bounds,
@@ -40,6 +41,7 @@ def main() -> None:
 
                 
 def draw(
+    index: int,
     x: Iterable[float],
     y: Iterable[float],
     z: Iterable[float],
@@ -55,7 +57,8 @@ def draw(
     ax.tick_params(right=True, top=True)
     ax.grid(True, linestyle='-', linewidth=0.1, color='black')
     ax.set_axisbelow(True)
-    ax.text(0.02, 1.02, f"{os.path.basename(FNAME)}", transform=ax.transAxes, fontsize=10)
+    ax.text(0.00, 1.02, f"{os.path.basename(FNAME)}", transform=ax.transAxes, fontsize=10)
+    ax.text(0.85, 1.02, f"Event {index}", transform=ax.transAxes, fontsize=10)
     fig.subplots_adjust(bottom=0.12, left=0.18, right=0.96, top=0.95)
     pdf.savefig()
     plt.close()
