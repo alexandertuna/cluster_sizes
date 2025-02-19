@@ -1,7 +1,7 @@
 import os
 import numpy as np
-import uproot
-from collections.abc import Iterable
+import uproot # type: ignore
+from collections.abc import Sequence
 from typing import List
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -42,9 +42,9 @@ def main() -> None:
                 
 def draw(
     index: int,
-    x: Iterable[float],
-    y: Iterable[float],
-    z: Iterable[float],
+    x: Sequence[float],
+    y: Sequence[float],
+    z: Sequence[float],
     bounds: List[float],
     pdf: PdfPages) -> None:
     xmin, xmax, ymin, ymax = bounds
