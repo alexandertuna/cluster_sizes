@@ -31,7 +31,7 @@ BRANCHES = [
 
 
 def main():
-    num = 100_000
+    num = 500_000
     data = Data(num=num).data
     print(data)
     plot = Plotter(data, scatter=True)
@@ -48,22 +48,23 @@ class Plotter:
 
     def plot(self) -> None:
         with PdfPages(self.pdfname) as pdf:
-            #self.plot_rz_order(pdf)
-            #self.plot_rz_side(pdf)
-            #self.plot_rz_layer(pdf)
-            #self.plot_rod_xy_1to4(pdf)
-            #self.plot_rod_xy_all(pdf)
-            #self.plot_rod_xy_number(pdf)
-            #self.plot_rod_rz(pdf)
-            #self.plot_module_rz(pdf)
-            #self.plot_module_rz_number(pdf)
-            #self.plot_rod_rz_tilted(pdf)
+            self.plot_rz_order(pdf)
+            self.plot_rz_side(pdf)
+            self.plot_rz_layer(pdf)
+            self.plot_rod_xy_1to4(pdf)
+            self.plot_rod_xy_all(pdf)
+            self.plot_rod_xy_number(pdf)
+            self.plot_rod_rz(pdf)
+            self.plot_module_rz(pdf)
+            self.plot_module_rz_number(pdf)
+            self.plot_rod_rz_tilted(pdf)
             self.plot_module_xy_tilted_1to4(pdf)
             self.plot_module_xy_tilted_all(pdf)
             self.plot_ring_rz(pdf)
 
 
     def plot_rz_order(self, pdf: PdfPages) -> None:
+        print("plot_rz_order")
         colors = {
             0: "r",
             1: "b",
@@ -71,7 +72,7 @@ class Plotter:
         fig, ax = plt.subplots(figsize=(8, 6))
         for order in colors:
             subset = self.data[self.data["ph2_order"] == order]
-            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[order], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[order], marker=".", edgecolors="none")
         ax.set_xlabel("z [cm]")
         ax.set_ylabel("r [cm]")
         ax.tick_params(right=True, top=True)
@@ -84,6 +85,7 @@ class Plotter:
 
 
     def plot_rz_side(self, pdf: PdfPages) -> None:
+        print("plot_rz_side")
         colors = {
             1: "blue",
             2: "red",
@@ -92,7 +94,7 @@ class Plotter:
         fig, ax = plt.subplots(figsize=(8, 6))
         for key in colors:
             subset = self.data[self.data["ph2_side"] == key]
-            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("z [cm]")
         ax.set_ylabel("r [cm]")
         ax.tick_params(right=True, top=True)
@@ -106,6 +108,7 @@ class Plotter:
 
 
     def plot_rz_layer(self, pdf: PdfPages) -> None:
+        print("plot_rz_layer")
         name = "ph2_layer"
         colors = {
             1: "tab:blue",
@@ -118,7 +121,7 @@ class Plotter:
         fig, ax = plt.subplots(figsize=(8, 6))
         for key in colors:
             subset = self.data[self.data[name] == key]
-            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("z [cm]")
         ax.set_ylabel("r [cm]")
         ax.tick_params(right=True, top=True)
@@ -134,6 +137,7 @@ class Plotter:
         plt.close()
 
     def plot_rod_xy_1to4(self, pdf: PdfPages) -> None:
+        print("plot_rod_xy_1to4")
         name = "ph2_rod"
         side = 3
         colors = {
@@ -145,7 +149,7 @@ class Plotter:
         fig, ax = plt.subplots(figsize=(6, 6))
         for key in colors:
             subset = self.data[(self.data[name] == key) & (self.data["ph2_side"] == side)]
-            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("x [cm]")
         ax.set_ylabel("y [cm]")
         ax.set_xlim(-130, 130)
@@ -162,6 +166,7 @@ class Plotter:
         plt.close()
 
     def plot_rod_xy_all(self, pdf: PdfPages) -> None:
+        print("plot_rod_xy_all")
         name = "ph2_rod"
         side = 3
         colors = {
@@ -171,9 +176,10 @@ class Plotter:
             4: "tab:red",
         }
         fig, ax = plt.subplots(figsize=(6, 6))
+        mask = self.data["ph2_side"] == side
         for key in colors:
-            subset = self.data[(self.data[name] % len(colors) == (key % len(colors))) & (self.data["ph2_side"] == side)]
-            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors='none')
+            subset = self.data[mask & (self.data[name] % len(colors) == (key % len(colors)))]
+            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("x [cm]")
         ax.set_ylabel("y [cm]")
         ax.set_xlim(-130, 130)
@@ -190,6 +196,7 @@ class Plotter:
         plt.close()
 
     def plot_rod_xy_number(self, pdf: PdfPages) -> None:
+        print("plot_rod_xy_number")
         name = "ph2_rod"
         side = 3
         colors = {
@@ -201,8 +208,9 @@ class Plotter:
         fig, ax = plt.subplots(figsize=(6, 6))
         layer_min = self.data["ph2_layer"].min()
         layer_max = self.data["ph2_layer"].max()
+        mask = self.data["ph2_side"] == side
         for layer in range(layer_min, layer_max+1):
-            subset_layer = self.data[(self.data["ph2_layer"] == layer) & (self.data["ph2_side"] == side)]
+            subset_layer = self.data[mask & (self.data["ph2_layer"] == layer)]
             rod_min = subset_layer[name].min()
             rod_max = subset_layer[name].max()
             for rod in range(rod_min, rod_max+1):
@@ -222,6 +230,7 @@ class Plotter:
 
 
     def plot_rod_rz(self, pdf: PdfPages) -> None:
+        print("plot_rod_rz")
         name = "ph2_rod"
         side = 3
         colors = {
@@ -229,9 +238,10 @@ class Plotter:
             2: "tab:orange",
         }
         fig, ax = plt.subplots(figsize=(8, 6))
+        mask = self.data["ph2_side"] == side
         for key in colors:
-            subset = self.data[(self.data[name] % len(colors) == (key % len(colors))) & (self.data["ph2_side"] == side)]
-            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors='none')
+            subset = self.data[mask & (self.data[name] % len(colors) == (key % len(colors)))]
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("z [cm]")
         ax.set_ylabel("r [cm]")
         ax.set_xlim(-130, 130)
@@ -246,6 +256,7 @@ class Plotter:
         plt.close()
 
     def plot_module_rz(self, pdf: PdfPages) -> None:
+        print("plot_module_rz")
         name = "ph2_module"
         side = 3
         layer = 1
@@ -259,9 +270,10 @@ class Plotter:
             7: "tab:pink",
         }
         fig, ax = plt.subplots(figsize=(8, 6))
+        mask = (self.data["ph2_side"] == side) & (self.data["ph2_layer"] == layer)
         for key in colors:
-            subset = self.data[(self.data[name] == key) & (self.data["ph2_layer"] == layer) & (self.data["ph2_side"] == side)]
-            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors='none')
+            subset = self.data[mask & (self.data[name] == key)]
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("z [cm]")
         ax.set_ylabel("r [cm]")
         ax.set_xlim(-18, 18)
@@ -283,6 +295,7 @@ class Plotter:
 
 
     def plot_module_rz_number(self, pdf: PdfPages) -> None:
+        print("plot_module_rz_number")
         name = "ph2_module"
         side = 3
         colors = {
@@ -297,8 +310,9 @@ class Plotter:
         fig, ax = plt.subplots(figsize=(8, 6))
         layer_min = self.data["ph2_layer"].min()
         layer_max = self.data["ph2_layer"].max()
+        mask = self.data["ph2_side"] == side
         for layer in range(layer_min, layer_max+1):
-            subset_layer = self.data[(self.data["ph2_layer"] == layer) & (self.data["ph2_side"] == side)]
+            subset_layer = self.data[mask & (self.data["ph2_layer"] == layer)]
             mod_min = subset_layer[name].min()
             mod_max = subset_layer[name].max()
             for mod in range(mod_min, mod_max+1):
@@ -319,6 +333,7 @@ class Plotter:
 
 
     def plot_rod_rz_tilted(self, pdf: PdfPages) -> None:
+        print("plot_rod_rz_tilted")
         name = "ph2_rod"
         sides = (1, 2)
         order = 0
@@ -340,7 +355,7 @@ class Plotter:
         mask = np.isin(self.data["ph2_side"], sides) & (self.data["ph2_order"] == order)
         for key in colors:
             subset = self.data[mask & (self.data[name] == key)]
-            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors="none")
 
             xpos_l = subset["ph2_z"][(subset["ph2_layer"] == 2) & (subset["ph2_z"] < 0)].mean()
             xpos_r = subset["ph2_z"][(subset["ph2_layer"] == 2) & (subset["ph2_z"] > 0)].mean()
@@ -362,6 +377,7 @@ class Plotter:
 
 
     def plot_module_xy_tilted_1to4(self, pdf: PdfPages) -> None:
+        print("plot_module_xy_tilted_1to4")
         name = "ph2_module"
         side = 1
         layers = (1, 2, 3)
@@ -376,7 +392,7 @@ class Plotter:
         mask = np.isin(self.data["ph2_layer"], layers) & (self.data["ph2_side"] == side) & (self.data["ph2_order"] == order)
         for key in colors:
             subset = self.data[mask & (self.data[name] == key)]
-            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("x [cm]")
         ax.set_ylabel("y [cm]")
         ax.set_xlim(-60, 60)
@@ -394,6 +410,7 @@ class Plotter:
 
 
     def plot_module_xy_tilted_all(self, pdf: PdfPages) -> None:
+        print("plot_module_xy_tilted_all")
         name = "ph2_module"
         side = 1
         layers = (1, 2, 3)
@@ -408,7 +425,7 @@ class Plotter:
         mask = np.isin(self.data["ph2_layer"], layers) & (self.data["ph2_side"] == side) & (self.data["ph2_order"] == order)
         for key in colors:
             subset = self.data[mask & (self.data[name] % len(colors) == (key % len(colors)))]
-            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors='none')
+            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors="none")
         ax.set_xlabel("x [cm]")
         ax.set_ylabel("y [cm]")
         ax.set_xlim(-60, 60)
@@ -426,6 +443,7 @@ class Plotter:
 
 
     def plot_ring_rz(self, pdf: PdfPages) -> None:
+        print("plot_ring_rz")
         name = "ph2_ring"
         order = 1
         colors = {
@@ -481,7 +499,7 @@ class Plotter:
 
 
 # how to make a binary histogram
-# cmap = ListedColormap(['white', 'black'])
+# cmap = ListedColormap(["white", "black"])
 # bounds = [-0.5, 0.5, 1e10]    # or some large number instead of 1e10
 # norm = BoundaryNorm(bounds, cmap.N)
 # ax.hist2d(self.data["ph2_z"], self.data["ph2_r"], bins=(500, 500), cmap=cmap, norm=norm)
