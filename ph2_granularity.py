@@ -57,7 +57,10 @@ class Plotter:
             #self.plot_rod_rz(pdf)
             #self.plot_module_rz(pdf)
             #self.plot_module_rz_number(pdf)
-            self.plot_rod_rz_tilted(pdf)
+            #self.plot_rod_rz_tilted(pdf)
+            self.plot_module_xy_tilted_1to4(pdf)
+            self.plot_module_xy_tilted_all(pdf)
+            self.plot_ring_rz(pdf)
 
 
     def plot_rz_order(self, pdf: PdfPages) -> None:
@@ -352,10 +355,129 @@ class Plotter:
         ax.tick_params(right=True, top=True)
         ax.text(0.00, 1.02, BNAME, transform=ax.transAxes, fontsize=8)
         ax.text(0.75, 1.02, f"side = {sides}, order = {order}", transform=ax.transAxes, fontsize=8)
-        ax.text(0.00, 0.63, f"module", color="black", transform=ax.transAxes, fontsize=20)
+        ax.text(0.00, 0.63, f"rod", color="black", transform=ax.transAxes, fontsize=20)
         fig.subplots_adjust(bottom=0.12, left=0.18, right=0.96, top=0.95)
         pdf.savefig()
         plt.close()
+
+
+    def plot_module_xy_tilted_1to4(self, pdf: PdfPages) -> None:
+        name = "ph2_module"
+        side = 1
+        layers = (1, 2, 3)
+        order = 0
+        colors = {
+            1: "tab:blue",
+            2: "tab:orange",
+            3: "tab:green",
+            4: "tab:red",
+        }
+        fig, ax = plt.subplots(figsize=(6, 6))
+        mask = np.isin(self.data["ph2_layer"], layers) & (self.data["ph2_side"] == side) & (self.data["ph2_order"] == order)
+        for key in colors:
+            subset = self.data[mask & (self.data[name] == key)]
+            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors='none')
+        ax.set_xlabel("x [cm]")
+        ax.set_ylabel("y [cm]")
+        ax.set_xlim(-60, 60)
+        ax.set_ylim(-60, 60)
+        ax.tick_params(right=True, top=True)
+        ax.text(0.00, 1.02, BNAME, transform=ax.transAxes, fontsize=8)
+        ax.text(0.65, 1.02, f"order={order}, side={side}, layer={layers}", transform=ax.transAxes, fontsize=8)
+        ax.text(0.38, 0.56, f"module=1", color=colors[1], transform=ax.transAxes, fontsize=12)
+        ax.text(0.38, 0.51, f"module=2", color=colors[2], transform=ax.transAxes, fontsize=12)
+        ax.text(0.38, 0.46, f"module=3", color=colors[3], transform=ax.transAxes, fontsize=12)
+        ax.text(0.38, 0.41, f"module=4", color=colors[4], transform=ax.transAxes, fontsize=12)
+        fig.subplots_adjust(bottom=0.12, left=0.18, right=0.96, top=0.95)
+        pdf.savefig()
+        plt.close()
+
+
+    def plot_module_xy_tilted_all(self, pdf: PdfPages) -> None:
+        name = "ph2_module"
+        side = 1
+        layers = (1, 2, 3)
+        order = 0
+        colors = {
+            1: "tab:blue",
+            2: "tab:orange",
+            3: "tab:green",
+            4: "tab:red",
+        }
+        fig, ax = plt.subplots(figsize=(6, 6))
+        mask = np.isin(self.data["ph2_layer"], layers) & (self.data["ph2_side"] == side) & (self.data["ph2_order"] == order)
+        for key in colors:
+            subset = self.data[mask & (self.data[name] % len(colors) == (key % len(colors)))]
+            ax.scatter(subset["ph2_x"], subset["ph2_y"], s=1, c=colors[key], marker=".", edgecolors='none')
+        ax.set_xlabel("x [cm]")
+        ax.set_ylabel("y [cm]")
+        ax.set_xlim(-60, 60)
+        ax.set_ylim(-60, 60)
+        ax.tick_params(right=True, top=True)
+        ax.text(0.00, 1.02, BNAME, transform=ax.transAxes, fontsize=8)
+        ax.text(0.65, 1.02, f"order={order}, side={side}, layer={layers}", transform=ax.transAxes, fontsize=8)
+        ax.text(0.38, 0.56, f"module%4=1", color=colors[1], transform=ax.transAxes, fontsize=12)
+        ax.text(0.38, 0.51, f"module%4=2", color=colors[2], transform=ax.transAxes, fontsize=12)
+        ax.text(0.38, 0.46, f"module%4=3", color=colors[3], transform=ax.transAxes, fontsize=12)
+        ax.text(0.38, 0.41, f"module%4=0", color=colors[4], transform=ax.transAxes, fontsize=12)
+        fig.subplots_adjust(bottom=0.12, left=0.18, right=0.96, top=0.95)
+        pdf.savefig()
+        plt.close()
+
+
+    def plot_ring_rz(self, pdf: PdfPages) -> None:
+        name = "ph2_ring"
+        order = 1
+        colors = {
+            1: "tab:blue",
+            2: "tab:orange",
+            3: "tab:green",
+            4: "tab:red",
+            5: "tab:purple",
+            6: "tab:brown",
+            7: "tab:pink",
+            8: "tab:gray",
+            9: "tab:olive",
+            10: "tab:cyan",
+            11: "lime",
+            12: "black",
+            13: "indigo",
+            14: "darkorange",
+            15: "darkgreen",
+        }
+        fig, ax = plt.subplots(figsize=(8, 6))
+        mask = self.data["ph2_order"] == order
+        for key in colors:
+            subset = self.data[mask & (self.data[name] == key)]
+            ax.scatter(subset["ph2_z"], subset["ph2_r"], s=1, c=colors[key], marker=".", edgecolors="none")
+        ax.set_xlabel("z [cm]")
+        ax.set_ylabel("r [cm]")
+        ax.set_xlim(-320, 320)
+        ax.set_ylim(20, 120)
+        ax.tick_params(right=True, top=True)
+        ax.text(0.00, 1.02, BNAME, transform=ax.transAxes, fontsize=8)
+        ax.text(0.85, 1.02, f"order = {order}", transform=ax.transAxes, fontsize=8)
+        ax.text(0.32, 0.85, f"ring number", color="black", transform=ax.transAxes, fontsize=16)
+        ax.text(0.32, 0.05, f"1", color=colors[1], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.10, f"2", color=colors[2], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.13, f"3", color=colors[3], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.18, f"4", color=colors[4], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.21, f"5", color=colors[5], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.26, f"6", color=colors[6], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.29, f"7", color=colors[7], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.34, f"8", color=colors[8], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.37, f"9", color=colors[9], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.42, f"10", color=colors[10], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.48, f"11", color=colors[11], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.58, f"12", color=colors[12], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.64, f"13", color=colors[13], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.75, f"14", color=colors[14], transform=ax.transAxes, fontsize=12)
+        ax.text(0.32, 0.81, f"15", color=colors[15], transform=ax.transAxes, fontsize=12)
+        fig.subplots_adjust(bottom=0.12, left=0.18, right=0.96, top=0.95)
+        pdf.savefig()
+        plt.close()
+
+
 
 
 # how to make a binary histogram
