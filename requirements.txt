@@ -1,3 +1,4 @@
 uproot
 matplotlib
 mypy
+notebook
