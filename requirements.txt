@@ -1,3 +1,4 @@
+awkward
 uproot
 matplotlib
 mypy
