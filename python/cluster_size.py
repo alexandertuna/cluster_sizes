@@ -10,10 +10,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import tqdm
+mpl.rcParams['font.size'] = 11
 
-REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
+# REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
+REGIONS = ["BarrelFlat"]
 LAYERS = [0, 1, 2, 3, 4, 5, 6]
 MIN_PT = 0.6
+
 
 def region_name(region: str) -> str:
     if region == "Inclusive":
@@ -26,18 +29,23 @@ def region_name(region: str) -> str:
         return "endcap"
     raise Exception
 
+
 def layer_name(layer: int) -> str:
     if layer == 0:
-        return "inclusive"
+        return "all layers"
     return f"layer {layer}"
 
 
 def main():
-    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
-    fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.root")
+    title = "TenMuExtendedE_0_200 (p 0-200 GeV)"
+    # title = "DoubleMuPt1Extended ($p_{T}$ 0.5-1.5 GeV)"
+    if "200" in title:
+        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
+    else:
+        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.root")
     data = Data(fname).data
     plotter = Plotter(data)
-    plotter.plot("cluster_size.pdf")
+    plotter.plot(title, "cluster_size.pdf")
 
 
 
@@ -47,13 +55,15 @@ class Plotter:
         self.data = data
 
 
-    def plot(self, pdfname: str) -> None:
+    def plot(self, title: str, pdfname: str) -> None:
+        self.title = title
         with PdfPages(pdfname) as pdf:
+            self.plot_title(title, pdf)
             self.plot_pt_eta_phi(pdf)
             self.plot_cluster_size(pdf)
-            #self.plot_cluster_size_cdf(pdf)
-            #self.plot_cluster_size_vs_rdphi(pdf)
-            #self.plot_cluster_size_vs_cosphi(pdf)
+            self.plot_cluster_size_cdf(pdf)
+            self.plot_cluster_size_vs_rdphi(pdf)
+            self.plot_cluster_size_vs_cosphi(pdf)
             #self.plot_simhit_dphi(pdf)
             #self.plot_simtrk_vs_simhit(pdf)
             #self.plot_simhit_pt_and_p(pdf)
@@ -61,6 +71,14 @@ class Plotter:
             #self.plot_order_and_side(pdf)
             #self.plot_nsimhit(pdf)
             #self.plot_pdgid(pdf)
+
+
+    def plot_title(self, title: str, pdf: PdfPages) -> None:
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, title, fontsize=20, ha="center")
+        ax.axis("off")
+        pdf.savefig()
+        plt.close()
 
 
     def plot_pt_eta_phi(self, pdf: PdfPages) -> None:
@@ -74,14 +92,15 @@ class Plotter:
             reg = region_name(region)
             mask = _mask & self.data[f"ph2_is{region}"]
             fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
-            # fig.subplots_adjust(wspace=0.45)
+            fig.subplots_adjust(right=0.95, wspace=0.5)
+            # fig.subplots_adjust(wspace=0.5)
             for ax in axs:
                 ax.tick_params(right=True, top=True)
 
             axs[0].hist(ak.flatten(self.data.ph2_simhit_pt[mask]), bins=bins_pt)
             axs[0].set_xlabel("Sim. hit $p_T$ [GeV]")
             axs[0].set_ylabel("Hits (ph2_*)")
-            axs[0].set_title(f"{reg} hits with sim. track $p_T$ > {MIN_PT} GeV")
+            axs[0].set_title(f"{reg} hits, sim. track $p_T$ > {MIN_PT} GeV")
 
             _, _, _, im = axs[1].hist2d(ak.flatten(self.data.ph2_eta[mask]).to_numpy(),
                                         ak.flatten(self.data.ph2_phi[mask]).to_numpy(),
@@ -90,7 +109,7 @@ class Plotter:
                           )
             axs[1].set_xlabel("Hit eta")
             axs[1].set_ylabel("Hit phi")
-            axs[1].set_title(f"{reg} hits with sim. track $p_T$ > {MIN_PT} GeV")
+            axs[1].set_title(f"{reg} hits, sim. track $p_T$ > {MIN_PT} GeV")
             cbar = fig.colorbar(im, ax=axs)
             cbar.set_label("Hits (ph2_*)")
 
@@ -109,7 +128,7 @@ class Plotter:
                 fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
                 for ax in axs:
                     ax.hist(ak.flatten(self.data.ph2_clustSize[mask]), bins=bins)
-                    ax.set_title(f"All hits, {reg}, layer {lay}")
+                    ax.set_title(f"All hits, {reg}, {lay}")
                     ax.set_xlabel("Cluster size")
                     ax.set_ylabel("Hits (ph2_*)")
                     ax.tick_params(right=True, top=True)
@@ -136,6 +155,7 @@ class Plotter:
 
                 mask = mask_region & ((layer == 0) | (self.data.ph2_layer == layer))
                 total = ak.sum(mask)
+                lay = layer_name(layer)
 
                 hist, bin_edges = np.histogram(ak.flatten(self.data.ph2_clustSize[mask]), bins=bins, density=(total > 0))
                 bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
@@ -148,7 +168,7 @@ class Plotter:
                     ax.plot(bin_centers, cdf, marker=".")
                     ax.set_xlabel("Cluster size")
                     ax.set_ylabel("CDF")
-                    ax.set_title(f"{reg} hits, layer {layer or 'inclusive'}, with sim. track > {MIN_PT} GeV")
+                    ax.set_title(f"{reg} hits, {lay},  sim. track > {MIN_PT} GeV")
                     ax.tick_params(right=True, top=True)
                     ax.grid()
                 axs[1].set_ylim([0.99, 1.0])
