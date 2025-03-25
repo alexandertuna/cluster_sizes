@@ -49,8 +49,9 @@ class Plotter:
 
     def plot(self, pdfname: str) -> None:
         with PdfPages(pdfname) as pdf:
-            #self.plot_cluster_size(pdf)
-            self.plot_cluster_size_cdf(pdf)
+            self.plot_pt_eta_phi(pdf)
+            self.plot_cluster_size(pdf)
+            #self.plot_cluster_size_cdf(pdf)
             #self.plot_cluster_size_vs_rdphi(pdf)
             #self.plot_cluster_size_vs_cosphi(pdf)
             #self.plot_simhit_dphi(pdf)
@@ -61,6 +62,40 @@ class Plotter:
             #self.plot_nsimhit(pdf)
             #self.plot_pdgid(pdf)
 
+
+    def plot_pt_eta_phi(self, pdf: PdfPages) -> None:
+        bins_pt = np.arange(0, 5, 0.05)
+        bins_etaphi = [
+            np.arange(-3, 3, 0.1),
+            np.arange(-3.2, 3.25, 0.1)
+        ]
+        _mask = (self.data.ph2_simhit_pt > MIN_PT)
+        for region in REGIONS:
+            reg = region_name(region)
+            mask = _mask & self.data[f"ph2_is{region}"]
+            fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+            # fig.subplots_adjust(wspace=0.45)
+            for ax in axs:
+                ax.tick_params(right=True, top=True)
+
+            axs[0].hist(ak.flatten(self.data.ph2_simhit_pt[mask]), bins=bins_pt)
+            axs[0].set_xlabel("Sim. hit $p_T$ [GeV]")
+            axs[0].set_ylabel("Hits (ph2_*)")
+            axs[0].set_title(f"{reg} hits with sim. track $p_T$ > {MIN_PT} GeV")
+
+            _, _, _, im = axs[1].hist2d(ak.flatten(self.data.ph2_eta[mask]).to_numpy(),
+                                        ak.flatten(self.data.ph2_phi[mask]).to_numpy(),
+                                        bins=bins_etaphi,
+                                        cmin=0.5,
+                          )
+            axs[1].set_xlabel("Hit eta")
+            axs[1].set_ylabel("Hit phi")
+            axs[1].set_title(f"{reg} hits with sim. track $p_T$ > {MIN_PT} GeV")
+            cbar = fig.colorbar(im, ax=axs)
+            cbar.set_label("Hits (ph2_*)")
+
+            pdf.savefig()
+            plt.close()
 
     def plot_cluster_size(self, pdf: PdfPages) -> None:
         bins = np.arange(-0.5, 34.5, 1)
@@ -404,7 +439,9 @@ class Data:
         self.data["simhit_cosphi"] = ((self.data.simhit_x * self.data.simhit_px) + (self.data.simhit_y * self.data.simhit_py)) / (self.data.simhit_pt * self.data.simhit_rt)
         self.data["simhit_phi"] = np.atan2(self.data.simhit_y, self.data.simhit_x)
         self.data["sim_p"] = np.sqrt(self.data.sim_px**2 + self.data.sim_py**2 + self.data.sim_pz**2)
-        self.data["ph2_phi"] = np.atan2(self.data.ph2_y, self.data.ph2_x)
+        self.data["ph2_eta"] = eta(self.data.ph2_x, self.data.ph2_y, self.data.ph2_z)
+        self.data["ph2_phi"] = phi(self.data.ph2_x, self.data.ph2_y)
+        # self.data["ph2_phi"] = np.atan2(self.data.ph2_y, self.data.ph2_x)
         self.data["ph2_rt"] = np.sqrt(self.data.ph2_x**2 + self.data.ph2_y**2)
         self.data["ph2_isBarrelFlat"] = (self.data.ph2_order == 0) & (self.data.ph2_side == 3)
         self.data["ph2_isBarrelTilt"] = (self.data.ph2_order == 0) & (self.data.ph2_side != 3)
