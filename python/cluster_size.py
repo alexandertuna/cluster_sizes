@@ -37,8 +37,8 @@ def layer_name(layer: int) -> str:
 
 
 def main():
-    title = "TenMuExtendedE_0_200 (p 0-200 GeV)"
-    # title = "DoubleMuPt1Extended ($p_{T}$ 0.5-1.5 GeV)"
+    # title = "TenMuExtendedE_0_200 (p 0-200 GeV)"
+    title = "DoubleMuPt1Extended ($p_{T}$ 0.5-1.5 GeV)"
     if "200" in title:
         fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
     else:
@@ -61,9 +61,12 @@ class Plotter:
             self.plot_title(title, pdf)
             self.plot_pt_eta_phi(pdf)
             self.plot_cluster_size(pdf)
-            self.plot_cluster_size_cdf(pdf)
+            self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
+            #self.plot_cluster_size_cdf(pdf)
             self.plot_cluster_size_vs_rdphi(pdf)
+            self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
             self.plot_cluster_size_vs_cosphi(pdf)
+            self.plot_pt_vs_cosphi(pdf)
             #self.plot_simhit_dphi(pdf)
             #self.plot_simtrk_vs_simhit(pdf)
             #self.plot_simhit_pt_and_p(pdf)
@@ -116,11 +119,17 @@ class Plotter:
             pdf.savefig()
             plt.close()
 
-    def plot_cluster_size(self, pdf: PdfPages) -> None:
+    def plot_cluster_size(self, pdf: PdfPages, cosphi=[-1, 1]) -> None:
+        cosphi_min, cosphi_max = cosphi
         bins = np.arange(-0.5, 34.5, 1)
         for region in REGIONS:
             reg = region_name(region)
-            _mask = self.data[f"ph2_is{region}"]
+            _mask = \
+                (self.data.ph2_simhit_pt > MIN_PT) & \
+                (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & \
+                (self.data.ph2_simhit_cosphi >= cosphi_min) & \
+                (self.data.ph2_simhit_cosphi <= cosphi_max) & \
+                self.data[f"ph2_is{region}"]
             for layer in LAYERS:
                 mask = _mask & ((layer == 0) | (self.data.ph2_layer == layer))
                 total = ak.sum(mask)
@@ -132,6 +141,8 @@ class Plotter:
                     ax.set_xlabel("Cluster size")
                     ax.set_ylabel("Hits (ph2_*)")
                     ax.tick_params(right=True, top=True)
+                    if cosphi != [-1, 1]:
+                        ax.text(0.5, 0.9, f"cos($\\phi$) in [{cosphi_min}, {cosphi_max}]", transform=ax.transAxes, ha="center")
                 if total > 0:
                     axs[1].semilogy()
                 pdf.savefig()
@@ -178,14 +189,17 @@ class Plotter:
         
 
 
-    def plot_cluster_size_vs_rdphi(self, pdf: PdfPages) -> None:
+    def plot_cluster_size_vs_rdphi(self, pdf: PdfPages, cosphi=[-1, 1]) -> None:
         bins = [
             np.arange(-0.001, 0.2, 0.005),
             np.arange(-0.5, 19.5, 1),
         ]
+        cosphi_min, cosphi_max = cosphi
         mask_basic = \
             (self.data.ph2_simhit_pt > MIN_PT) & \
             (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & \
+            (self.data.ph2_simhit_cosphi >= cosphi_min) & \
+            (self.data.ph2_simhit_cosphi <= cosphi_max) & \
             (self.data.ph2_simhit_cosphi > 0.15)
 
         for region in REGIONS:
@@ -201,7 +215,7 @@ class Plotter:
                 fig, ax = plt.subplots(figsize=(8, 8))
                 _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_rdphi[mask]).to_numpy(),
                                         ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
-                                        norm=mpl.colors.LogNorm() if total > 0 else None,
+                                        #norm=mpl.colors.LogNorm() if total > 0 else None,
                                         cmin=0.5,
                                         bins=bins,
                                         )
@@ -210,6 +224,8 @@ class Plotter:
                 ax.set_xlabel("r * dphi(hit, sim. hit) [cm]")
                 ax.set_ylabel("Cluster size")
                 ax.set_title(f"{reg} hits, layer {layer or 'inclusive'}, with sim. track > {MIN_PT} GeV")
+                if cosphi != [-1, 1]:
+                    ax.text(0.5, 0.9, f"cos($\\phi$) in [{cosphi_min}, {cosphi_max}]", transform=ax.transAxes, ha="center")
                 ax.tick_params(right=True, top=True)
 
                 pdf.savefig()
@@ -251,6 +267,42 @@ class Plotter:
                 plt.close()
 
 
+    def plot_pt_vs_cosphi(self, pdf: PdfPages) -> None:
+        bins = [
+            np.arange(0.2, 1.01, 0.01),
+            np.arange(0.5, 2.0, 0.01),
+        ]
+        mask_basic = \
+            (self.data.ph2_simhit_pt > MIN_PT) & \
+            (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & \
+            (self.data.ph2_simhit_cosphi > 0.15)
+
+        for region in REGIONS:
+
+            reg = region_name(region)
+            mask_region = mask_basic & self.data[f"ph2_is{region}"]
+
+            for layer in LAYERS:
+
+                mask = mask_region & ((layer == 0) | (self.data.ph2_layer == layer))
+                total = ak.sum(mask)
+
+                fig, ax = plt.subplots(figsize=(8, 8))
+                _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_cosphi[mask]).to_numpy(),
+                                        ak.flatten(self.data.ph2_simhit_pt[mask]).to_numpy(),
+                                        norm=mpl.colors.LogNorm() if total > 0 else None,
+                                        cmin=0.5,
+                                        bins=bins,
+                              )
+                cbar = fig.colorbar(im, ax=ax)
+                cbar.set_label("Hits (ph2_*)")
+                ax.set_xlabel("cos($\\phi$) of $p_{T, sim}$ and $x_{T, sim}$")
+                ax.set_ylabel("Sim. hit $p_T$ [GeV]")
+                ax.set_title(f"{reg} hits, layer {layer or 'inclusive'}, with sim. track > {MIN_PT} GeV")
+                ax.tick_params(right=True, top=True)
+
+                pdf.savefig()
+                plt.close()
 
 
     def plot_simtrk_vs_simhit(self, pdf: PdfPages) -> None:
