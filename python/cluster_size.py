@@ -59,21 +59,24 @@ class Plotter:
         self.title = title
         with PdfPages(pdfname) as pdf:
             self.plot_title(title, pdf)
-            self.plot_pt_eta_phi(pdf)
-            self.plot_cluster_size(pdf)
-            self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
-            #self.plot_cluster_size_cdf(pdf)
+            # self.plot_pt_eta_phi(pdf)
+            # self.plot_cluster_size(pdf)
+            # self.plot_cluster_size_cdf(pdf)
             self.plot_cluster_size_vs_rdphi(pdf)
-            self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
+            self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
             self.plot_cluster_size_vs_cosphi(pdf)
-            self.plot_pt_vs_cosphi(pdf)
-            #self.plot_simhit_dphi(pdf)
-            #self.plot_simtrk_vs_simhit(pdf)
-            #self.plot_simhit_pt_and_p(pdf)
-            #self.plot_simhit_cosphi(pdf)
-            #self.plot_order_and_side(pdf)
-            #self.plot_nsimhit(pdf)
-            #self.plot_pdgid(pdf)
+            self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
+            #self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
+            #self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
+            #self.plot_pt_vs_cosphi(pdf)
+            # self.plot_simhit_dphi(pdf)
+            # self.plot_simtrk_vs_simhit(pdf)
+            # self.plot_simhit_pt_and_p(pdf)
+            # self.plot_simhit_cosphi(pdf)
+            # self.plot_order_and_side(pdf)
+            # self.plot_nsimhit(pdf)
+            #### self.plot_pdgid(pdf)
+            ##### self.plot_event_displays(pdf)
 
 
     def plot_title(self, title: str, pdf: PdfPages) -> None:
@@ -189,7 +192,7 @@ class Plotter:
         
 
 
-    def plot_cluster_size_vs_rdphi(self, pdf: PdfPages, cosphi=[-1, 1]) -> None:
+    def plot_cluster_size_vs_rdphi(self, pdf: PdfPages, cosphi=[-1, 1], cdf=False) -> None:
         bins = [
             np.arange(-0.001, 0.2, 0.005),
             np.arange(-0.5, 19.5, 1),
@@ -212,15 +215,38 @@ class Plotter:
                 mask = mask_region & ((layer == 0) | (self.data.ph2_layer == layer))
                 total = ak.sum(mask)
 
-                fig, ax = plt.subplots(figsize=(8, 8))
-                _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_rdphi[mask]).to_numpy(),
-                                        ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
-                                        #norm=mpl.colors.LogNorm() if total > 0 else None,
-                                        cmin=0.5,
-                                        bins=bins,
-                                        )
-                cbar = fig.colorbar(im, ax=ax)
-                cbar.set_label("Hits (ph2_*)")
+                if cdf:
+                    counts, xedges, yedges = np.histogram2d(ak.flatten(self.data.ph2_simhit_rdphi[mask]).to_numpy(),
+                                                            ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
+                                                            bins=bins)
+                    cumsum = np.cumsum(counts, axis=1)
+                    column_sums = counts.sum(axis=1)
+                    column_sums[column_sums == 0] = 1
+                    cdf_array = np.transpose(np.divide(
+                        cumsum.T,
+                        column_sums,
+                    ))
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    mesh = ax.pcolormesh(
+                        xedges, 
+                        yedges, 
+                        cdf_array.T,
+                        cmap="RdYlGn",
+                        vmin=0.9,
+                    )
+                    fig.colorbar(mesh, ax=ax, label="Per-column CDF")
+
+                else:
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_rdphi[mask]).to_numpy(),
+                                            ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
+                                            norm=mpl.colors.LogNorm() if total > 0 else None,
+                                            cmin=0.5,
+                                            bins=bins,
+                                            )
+                    fig.colorbar(im, ax=ax, label="Hits (ph2_*)")
+
+                # styling
                 ax.set_xlabel("r * dphi(hit, sim. hit) [cm]")
                 ax.set_ylabel("Cluster size")
                 ax.set_title(f"{reg} hits, layer {layer or 'inclusive'}, with sim. track > {MIN_PT} GeV")
@@ -232,7 +258,7 @@ class Plotter:
                 plt.close()
 
 
-    def plot_cluster_size_vs_cosphi(self, pdf: PdfPages) -> None:
+    def plot_cluster_size_vs_cosphi(self, pdf: PdfPages, cdf=False) -> None:
         bins = [
             np.arange(0.2, 1.01, 0.01),
             np.arange(-0.5, 19.5, 1),
@@ -249,20 +275,42 @@ class Plotter:
                 mask = mask_region & ((layer == 0) | (self.data.ph2_layer == layer))
                 total = ak.sum(mask)
 
-                fig, ax = plt.subplots(figsize=(8, 8))
-                _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_cosphi[mask]).to_numpy(),
-                                        ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
-                                        norm=mpl.colors.LogNorm() if total > 0 else None,
-                                        cmin=0.5,
-                                        bins=bins,
-                              )
-                cbar = fig.colorbar(im, ax=ax)
-                cbar.set_label("Hits (ph2_*)")
+                if cdf:
+                    counts, xedges, yedges = np.histogram2d(ak.flatten(self.data.ph2_simhit_cosphi[mask]).to_numpy(),
+                                                            ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
+                                                            bins=bins)
+                    cumsum = np.cumsum(counts, axis=1)
+                    column_sums = counts.sum(axis=1)
+                    column_sums[column_sums == 0] = 1
+                    cdf_array = np.transpose(np.divide(
+                        cumsum.T,
+                        column_sums,
+                    ))
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    mesh = ax.pcolormesh(
+                        xedges, 
+                        yedges, 
+                        cdf_array.T,
+                        cmap="RdYlGn",
+                        vmin=0.9,
+                    )
+                    fig.colorbar(mesh, ax=ax, label="Per-column CDF")
+
+                else:
+                    fig, ax = plt.subplots(figsize=(8, 8))
+                    _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_cosphi[mask]).to_numpy(),
+                                            ak.flatten(self.data.ph2_clustSize[mask]).to_numpy(),
+                                            norm=mpl.colors.LogNorm() if total > 0 else None,
+                                            cmin=0.5,
+                                            bins=bins,
+                                )
+                    fig.colorbar(im, ax=ax, label="Hits (ph2_*)")
+
+                # styling
+                ax.tick_params(right=True, top=True)
+                ax.set_title(f"{reg} hits, layer {layer or 'inclusive'}, with sim. track > {MIN_PT} GeV")
                 ax.set_xlabel("cos($\\phi$) of $p_{T, sim}$ and $x_{T, sim}$")
                 ax.set_ylabel("Cluster size")
-                ax.set_title(f"{reg} hits, layer {layer or 'inclusive'}, with sim. track > {MIN_PT} GeV")
-                ax.tick_params(right=True, top=True)
-
                 pdf.savefig()
                 plt.close()
 
@@ -466,6 +514,114 @@ class Plotter:
         plt.close()
 
 
+    def plot_event_displays(self, pdf: PdfPages, num: int = 20) -> None:
+        cosphi_min, cosphi_max = 0.3, 0.5
+        mask = \
+            (self.data.ph2_isBarrelFlat) & \
+            (self.data.ph2_simhit_pt > MIN_PT) & \
+            (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & \
+            (self.data.ph2_simhit_cosphi > 0.15) & \
+            (self.data.ph2_simhit_cosphi >= cosphi_min) & \
+            (self.data.ph2_simhit_cosphi <= cosphi_max) & \
+            (self.data.ph2_layer == 6)
+
+        track_of_interest = ak.firsts(self.data.ph2_simhit_simTrkIdx[mask], axis=-1)
+        n_wonky = ak.sum(mask, axis=-1) # [2, 9, ...]
+        wonky = n_wonky > 0
+        where_wonky = ak.where(wonky)[0]
+        print("N wonky:", n_wonky)
+        print("wonky:", wonky)
+        print("where_wonky:", where_wonky)
+        print("where_wonky:", where_wonky.type)
+        print("TOI:", track_of_interest)
+        print(ak.sum(mask, axis=-1))
+        #print(ak.sum(mask, axis=-1).type)
+        print(self.data.event[2:3])
+        #print(mask)
+        #print(mask.type)
+        #print(mask[2].to_list())
+
+        radii = [23, 36, 51, 68, 86, 108.5]
+
+        for it, ev in enumerate(where_wonky):
+            if it >= num:
+                break
+            print(ev)
+
+            fig, axs = plt.subplots(ncols=2, figsize=(16, 6))
+            circles = [plt.Circle(xy=(0, 0), radius=rad, edgecolor='gray', fill=False) for rad in radii]
+            for circle in circles:
+                axs[0].add_patch(circle)
+            barrel = self.data.ph2_isBarrelFlat[ev]
+            trackmask = self.data.ph2_simhit_simTrkIdx[ev] == track_of_interest[ev]
+
+            # xy
+            axs[0].scatter(self.data.ph2_x[ev][barrel & trackmask],
+                           self.data.ph2_y[ev][barrel & trackmask],
+                           c="blue",
+                           )
+            axs[0].scatter(self.data.ph2_x[ev][barrel & trackmask & mask[ev]],
+                           self.data.ph2_y[ev][barrel & trackmask & mask[ev]],
+                           c="red",
+                           )
+
+            axs[0].set_xlim([-120, 120])
+            axs[0].set_ylim([-120, 120])
+            axs[0].set_xlabel("x [cm]")
+            axs[0].set_ylabel("y [cm]")
+
+            # rz
+            axs[1].scatter(self.data.ph2_z[ev][barrel & trackmask],
+                           self.data.ph2_rt[ev][barrel & trackmask],
+                           c="blue",
+                           )
+            axs[1].scatter(self.data.ph2_z[ev][barrel & trackmask & mask[ev]],
+                          self.data.ph2_rt[ev][barrel & trackmask & mask[ev]],
+                          c="red",
+                          )
+            axs[1].set_xlim([-120, 120])
+            axs[1].set_ylim([0, 120])
+            axs[1].set_xlabel("z [cm]")
+            axs[1].set_ylabel("r [cm]")
+            pdf.savefig()
+            plt.close()
+
+
+
+        ##############################
+        # check: ph2/sim matching
+        ##############################
+        #print("*"*10)
+        #print(self.data.event[2:3])
+        #print(self.data.ph2_nsimhit[2].to_list())
+        #print(self.data.ph2_simHitIdx[2].to_list())
+        #print("*"*10)
+        #print(self.data.simhit_simTrkIdx[2])
+        #print(self.data.simhit_simTrkIdx[2][315])
+        #print(self.data.simhit_simTrkIdx[2][347])
+        # track = ph2_simhit_simTrkIdx
+        #print("*"*10)
+        #print(self.data.ph2_simhit_simTrkIdx[2].to_list())
+        #print(self.data.ph2_simhit_simTrkIdx[2][mask[2]])
+        #print(ak.firsts(self.data.ph2_simhit_simTrkIdx[0:3][mask[0:3]], axis=-1))
+        #print("*"*10)
+        #print(ak.max(self.data.ph2_nsimhit[2]))
+        #print(self.data.ph2_nsimhit[2:3])
+        #print(self.data.ph2_simHitIdx[2:3])
+        #print("*"*10)
+
+
+        ##############################
+        # check: radii
+        ##############################
+        fig, ax = plt.subplots()
+        ax.hist(ak.flatten(self.data.ph2_rt[self.data.ph2_isBarrelFlat]), bins=np.arange(120))
+        ax.grid()
+        pdf.savefig()
+        plt.close()
+
+
+
 class Data:
 
     def __init__(self, fname: Path) -> None:
@@ -480,6 +636,7 @@ class Data:
         tree = uproot.open(f"{self.fname}:trackingNtuple/tree")
         print(f"Got TTree: {tree}")
         data = tree.arrays([
+            'event',
             'trk_pt', 'trk_eta', 'trk_phi',
             'ph2_isBarrel', 'ph2_isLower', 'ph2_isUpper', 'ph2_isStack', 
             'ph2_order', 'ph2_ring', 'ph2_rod', 'ph2_detId', 
@@ -528,6 +685,7 @@ class Data:
         self.data["ph2_simhit_rt"]      = self.data.simhit_rt[self.data.ph2_simHitIdxFirst]
         self.data["ph2_simhit_phi"]     = self.data.simhit_phi[self.data.ph2_simHitIdxFirst]
         self.data["ph2_simhit_cosphi"]  = self.data.simhit_cosphi[self.data.ph2_simHitIdxFirst]
+        self.data["ph2_simhit_simTrkIdx"] = self.data.simhit_simTrkIdx[self.data.ph2_simHitIdxFirst]
         self.data["ph2_simhit_dphi"] = dphi(self.data.ph2_phi, self.data.ph2_simhit_phi)
         dne = np.float32(0)
         self.data["ph2_simhit_p"]      = ak.fill_none(self.data.ph2_simhit_p, dne)
@@ -535,6 +693,7 @@ class Data:
         self.data["ph2_simhit_phi"]    = ak.fill_none(self.data.ph2_simhit_phi, dne)
         self.data["ph2_simhit_dphi"]   = ak.fill_none(self.data.ph2_simhit_dphi, dne)
         self.data["ph2_simhit_cosphi"] = ak.fill_none(self.data.ph2_simhit_cosphi, dne)
+        self.data["ph2_simhit_simTrkIdx"] = ak.fill_none(self.data.ph2_simhit_simTrkIdx, -1)
         self.data["ph2_simhit_rdphi"]  = self.data["ph2_simhit_rt"] * self.data["ph2_simhit_dphi"]
         self.data["ph2_simtrk_p"]  = self.data.simhit_simtrk_p[self.data.ph2_simHitIdxFirst]
         self.data["ph2_simtrk_pt"] = self.data.simhit_simtrk_pt[self.data.ph2_simHitIdxFirst]
