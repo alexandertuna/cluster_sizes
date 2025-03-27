@@ -195,7 +195,7 @@ class Plotter:
     def plot_cluster_size_vs_rdphi(self, pdf: PdfPages, cosphi=[-1, 1], cdf=False) -> None:
         bins = [
             np.arange(-0.001, 0.2, 0.005),
-            np.arange(-0.5, 19.5, 1),
+            np.arange(-0.5, 17.5, 1),
         ]
         cosphi_min, cosphi_max = cosphi
         mask_basic = \
@@ -226,15 +226,16 @@ class Plotter:
                         cumsum.T,
                         column_sums,
                     ))
+                    vmin = 5e-4
                     fig, ax = plt.subplots(figsize=(8, 8))
                     mesh = ax.pcolormesh(
-                        xedges, 
-                        yedges, 
-                        cdf_array.T,
+                        xedges,
+                        yedges,
+                        1 - cdf_array.T + vmin,
                         cmap="RdYlGn",
-                        vmin=0.9,
+                        norm=mpl.colors.LogNorm(vmin=vmin) if total > 0 else None,
                     )
-                    fig.colorbar(mesh, ax=ax, label="Per-column CDF")
+                    fig.colorbar(mesh, ax=ax, label="1 - per-column CDF")
 
                 else:
                     fig, ax = plt.subplots(figsize=(8, 8))
@@ -260,8 +261,8 @@ class Plotter:
 
     def plot_cluster_size_vs_cosphi(self, pdf: PdfPages, cdf=False) -> None:
         bins = [
-            np.arange(0.2, 1.01, 0.01),
-            np.arange(-0.5, 19.5, 1),
+            np.arange(0.2, 1.01, 0.02),
+            np.arange(-0.5, 17.5, 1),
         ]
         mask_basic = (self.data.ph2_simhit_pt > MIN_PT) & (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & (self.data.ph2_simhit_cosphi > 0.15)
 
@@ -286,15 +287,16 @@ class Plotter:
                         cumsum.T,
                         column_sums,
                     ))
+                    vmin = 5e-4
                     fig, ax = plt.subplots(figsize=(8, 8))
                     mesh = ax.pcolormesh(
-                        xedges, 
-                        yedges, 
-                        cdf_array.T,
+                        xedges,
+                        yedges,
+                        1 - cdf_array.T + vmin,
                         cmap="RdYlGn",
-                        vmin=0.9,
+                        norm=mpl.colors.LogNorm(vmin=vmin) if total > 0 else None,
                     )
-                    fig.colorbar(mesh, ax=ax, label="Per-column CDF")
+                    fig.colorbar(mesh, ax=ax, label="1 - per-column CDF")
 
                 else:
                     fig, ax = plt.subplots(figsize=(8, 8))
