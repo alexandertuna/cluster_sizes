@@ -64,12 +64,12 @@ class Plotter:
     def plot(self, title: str, pdfname: str) -> None:
         self.title = title
         with PdfPages(pdfname) as pdf:
-            self.plot_title(title, pdf)
-            self.plot_pt_eta_phi(pdf)
+            # self.plot_title(title, pdf)
+            # self.plot_pt_eta_phi(pdf)
             # self.plot_tof(pdf)
             # self.plot_cluster_size(pdf)
             # self.plot_cluster_size_cdf(pdf)
-            self.plot_cluster_size_vs_rdphi(pdf)
+            # self.plot_cluster_size_vs_rdphi(pdf)
             # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
             # self.plot_cluster_size_vs_cosphi(pdf)
             # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
@@ -90,8 +90,9 @@ class Plotter:
             # self.plot_order_and_side(pdf)
             # self.plot_nsimhit(pdf)
             # ### self.plot_pdgid(pdf)
-            self.plot_event_displays(pdf)
+            # self.plot_event_displays(pdf)
             self.dump_event_info(pdf)
+            self.plot_local_hits(pdf)
 
 
     def plot_title(self, title: str, pdf: PdfPages) -> None:
@@ -618,7 +619,7 @@ class Plotter:
         plt.close()
 
 
-    def dump_event_info(self, pdf: PdfPages, num: int = 10) -> None:
+    def dump_event_info(self, pdf: PdfPages, num: int = 10_000) -> None:
 
         #
         # get events with hits in barrel (flat) layer 6
@@ -632,12 +633,13 @@ class Plotter:
         n_hits_l6 = ak.sum(mask, axis=-1) # [2, 9, ...]
         events_of_interest = ak.where(n_hits_l6 > 0)[0]
         print("N(hits, L6):", n_hits_l6, n_hits_l6.type)
-        print("Events of interest:", events_of_interest)
+        print("Events of interest:", events_of_interest.type, events_of_interest)
 
         #
         # describe these events
         #
         for it, ev in enumerate(events_of_interest):
+            break
             if it >= num:
                 break
             ph2_n = len(self.data.ph2_x[ev])
@@ -667,6 +669,7 @@ class Plotter:
                 print("")
             print("")
 
+    def plot_local_hits(self, pdf: PdfPages, num: int = 10) -> None:
 
         #
         # helper functions for plotting
@@ -711,61 +714,64 @@ class Plotter:
 
 
         #
+        # get events with good sim. hits in barrel (flat) layer 6
+        #
+        mask = \
+            (self.data.simhit_isBarrelFlat) & \
+            (self.data.simhit_pt > MIN_PT) & \
+            (self.data.simhit_p > 0.5 * self.data.simhit_simtrk_p) & \
+            (self.data.simhit_cosphi > 0.15) & \
+            (self.data.simhit_layer == 6)
+        n_hits_l6 = ak.sum(mask, axis=-1) # [2, 9, ...]
+        events_of_interest = ak.where(n_hits_l6 > 0)[0]
+        print("N(hits, L6):", n_hits_l6, n_hits_l6.type)
+        print("Events of interest:", events_of_interest.type, events_of_interest)
+
+
+        #
         # plot a few events in their local coordinates (attempt)
         #
+        n_ph2_hits = []
+
         for it, ev in enumerate(events_of_interest):
 
             if it >= num:
                 break
 
-            ph2_n = len(self.data.ph2_x[ev])
-            end = " "
-            print(f"Event {ev}, {ph2_n=}")
+            # mask = \
+            #     self.data[ev].ph2_isBarrelFlat & \
+            #     (self.data[ev].ph2_layer == 6) & \
+            #     (self.data[ev].ph2_simhit_tof < 10) & \
+            #     (self.data[ev].ph2_simhit_cosphi > 0.15)
+            # all_hits = np.flatnonzero(mask)
+            # simhits = ak.flatten(self.data.ph2_simHitIdx[ev][all_hits])
+            # print(ev, np.sort(np.unique(simhits)))
 
-            __mask = \
-                self.data[ev].ph2_isBarrelFlat & \
-                (self.data[ev].ph2_layer == 6) & \
-                (self.data[ev].ph2_simhit_tof < 10) & \
-                (self.data[ev].ph2_simhit_cosphi > 0.15)
-            all_hits = np.flatnonzero(__mask)
-            simhits = ak.flatten(self.data.ph2_simHitIdx[ev][all_hits])
-            print("simhits", np.unique(simhits))
+            mask = \
+                self.data[ev].simhit_isBarrelFlat & \
+                (self.data[ev].simhit_layer == 6) & \
+                (self.data[ev].simhit_tof < 10) & \
+                (self.data[ev].simhit_pt > MIN_PT) & \
+                (self.data[ev].simhit_p > 0.5 * self.data[ev].simhit_simtrk_p) & \
+                (self.data[ev].simhit_cosphi > 0.15)
+            simhits = np.flatnonzero(mask)
+            # print(ev, np.sort(np.unique(simhits)))
+            # print("")            
+
+
 
             for simhit in np.unique(simhits):
 
                 hits = np.flatnonzero(self.data[ev].ph2_simHitIdxFirst == simhit)
-                isUpper = bool(self.data[ev].simhit_isUpper[simhit])
-                # print(ev, simhit, hits)
+                isUpper = "isUpper" if bool(self.data[ev].simhit_isUpper[simhit]) else "isLower"
+                n_ph2_hits.append(len(hits))
+                if len(hits) == 0:
+                    continue
 
-            # for isUpper in [True, False]:
-
-            #     # if ev == 3:
-            #     #     hits = range(34, 37) if not isUpper else range(37, 38)
-            #     #     # isUpper = False
-            #     # elif ev == 9:
-            #     #     hits = range(26, 28) if not isUpper else range(28, 30)
-            #     #     # isUpper = False
-            #     # else:
-            #     #     raise Exception("fuck fuck fuck")
-
-            #     __mask = \
-            #         self.data[ev].ph2_isBarrelFlat & \
-            #         (self.data[ev].ph2_layer == 6) & \
-            #         (self.data[ev].ph2_isUpper == isUpper) & \
-            #         (self.data[ev].ph2_simhit_tof < 10) & \
-            #         (self.data[ev].ph2_simhit_cosphi > 0.15)
-            #     hits = np.flatnonzero(__mask)
-
-                # gotta figure this out
-                #############################################
-                # if ev == 3 and isUpper == False:
-                #     hits = range(34, 37)
-                #############################################
-
-                # xs_total = self.data.ph2_x[ev][hits_total]
-                # ys_total = self.data.ph2_y[ev][hits_total]
-                # x_median = np.median(xs_total)
-                # y_median = np.median(ys_total)
+                if it > 10:
+                    if it % 10 == 0:
+                        print(f"Skipping event {ev}, simhit {simhit}")
+                    continue
 
                 xs = self.data.ph2_x[ev][hits]
                 ys = self.data.ph2_y[ev][hits]
@@ -793,6 +799,7 @@ class Plotter:
                 # annotating with text
                 ax.text(0.1, 0.86, "Sim. hit", transform=ax.transAxes, fontsize=20, color="red")
                 ax.text(0.1, 0.80, "ph2 hits", transform=ax.transAxes, fontsize=20, color="black")
+                ax.text(0.1, 0.74, "Strip edges", transform=ax.transAxes, fontsize=20, color="lightgray")
                 ha, va = "center", "bottom"
                 for txt in range(len(xps)):
                     ax.text(xps[txt], yps[txt] + 0.32*delta, "Size", fontsize=10, ha=ha, va=va)
@@ -800,20 +807,31 @@ class Plotter:
                     ax.text(xps[txt], yps[txt] - 0.26*delta, r"$r*d\phi$", fontsize=10, ha=ha, va=va)
                     ax.text(xps[txt], yps[txt] - 0.32*delta, f"{int(rdphis[txt] * 10 * 1e3)} um", fontsize=10, ha=ha, va=va)
 
+                # draw hits
+                ax.scatter(simhit_xp, simhit_yp, c="red", zorder=999)
+                ax.scatter(xps, yps, c="black", zorder=99)
+                ax.tick_params(right=True, top=True)
+                ax.set_xlabel("local x [cm]")
+                ax.set_ylabel("local y [cm]")
+                ax.set_title(f"Event {ev}, layer 6, simhit={int(simhit)}, {isUpper}")
+
                 # draw strip boundaries
                 xlines = get_x_edges(xps, clustSizes)
                 for xline in xlines:
-                    ax.plot([xline, xline], [yavg - 0.01, yavg + 0.01], color="gray")
+                    ax.plot([xline, xline], [yavg - 0.01, yavg + 0.01], color="lightgray", zorder=1)
 
-                # draw hits
-                ax.scatter(xps, yps, c="black")
-                ax.scatter(simhit_xp, simhit_yp, c="red")
-                ax.tick_params(right=True, top=True)
-                ax.set_xlabel("x [cm]")
-                ax.set_ylabel("y [cm]")
-                ax.set_title(f"Event {ev}, layer 6, simhit={int(simhit)}, {isUpper=}")
                 pdf.savefig()
                 plt.close()
+
+
+        # summary histogram
+        # print("N ph2 hits:", n_ph2_hits)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.hist(n_ph2_hits, bins=np.arange(-0.5, 8.5, 1), edgecolor="black")
+        ax.set_xlabel("Number of ph2 hits")
+        ax.set_ylabel("Sim. hits")
+        pdf.savefig()
+        plt.close()
 
 
 
@@ -961,7 +979,7 @@ class Data:
             'simhit_px', 'simhit_py', 'simhit_pz',
             'simhit_tof', 'simhit_particle', 'simhit_simTrkIdx', 
             'simhit_isUpper', 'simhit_isLower', 'simhit_layer',
-            'simhit_module', 'simhit_rod',
+            'simhit_module', 'simhit_rod', 'simhit_order', 'simhit_side',
             'sim_event', 'sim_bunchCrossing', 'sim_pdgId',
             'sim_genPdgIds', 'sim_isFromBHadron', 
             'sim_px', 'sim_py', 'sim_pz', 
@@ -987,6 +1005,7 @@ class Data:
         self.data["ph2_isBarrelTilt"] = (self.data.ph2_order == 0) & (self.data.ph2_side != 3)
         self.data["ph2_isEndcap"] = (self.data.ph2_order != 0)
         self.data["ph2_isInclusive"] = self.data.ph2_isBarrelFlat | self.data.ph2_isBarrelTilt | self.data.ph2_isEndcap
+        self.data["simhit_isBarrelFlat"] = (self.data.simhit_order == 0) & (self.data.simhit_side == 3)
         self.data["simhit_simtrk_pt"] = self.data.sim_pt[self.data.simhit_simTrkIdx]
         self.data["simhit_simtrk_p"] = self.data.sim_p[self.data.simhit_simTrkIdx]
         self.data["ph2_nsimhit"] = ak.num(self.data.ph2_simHitIdx, axis=-1)
