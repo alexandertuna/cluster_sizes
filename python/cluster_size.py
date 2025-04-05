@@ -17,6 +17,8 @@ REGIONS = ["BarrelFlat"]
 # LAYERS = [0, 1, 2, 3, 4, 5, 6]
 LAYERS = [6]
 MIN_PT = 0.6
+PITCH_UM = 90
+PITCH_CM = PITCH_UM / 1000.0 / 10.0
 
 
 def region_name(region: str) -> str:
@@ -616,7 +618,7 @@ class Plotter:
         plt.close()
 
 
-    def dump_event_info(self, pdf: PdfPages, num: int = 2) -> None:
+    def dump_event_info(self, pdf: PdfPages, num: int = 10) -> None:
 
         #
         # get events with hits in barrel (flat) layer 6
@@ -642,6 +644,8 @@ class Plotter:
             end = " "
             print(f"Event {ev}, {ph2_n=}")
             for it in range(ph2_n):
+                if self.data.ph2_layer[ev][it] != 6:
+                    continue
                 print(f"Event {ev}", end=end)
                 print(f"ph2 hit {it:02}", end=end)
                 print(f"barrelFlat {int(self.data.ph2_isBarrelFlat[ev][it])}", end=end)
@@ -657,113 +661,159 @@ class Plotter:
                 print(f"clustSize {self.data.ph2_clustSize[ev][it]}", end=end)
                 print(f"r*dphi {self.data.ph2_simhit_rdphi[ev][it]:.4f}", end=end)
                 print(f"simHitIdx {self.data.ph2_simHitIdx[ev][it]}", end=end)
+                print(f"ph2_simHitIdxFirst {self.data.ph2_simHitIdxFirst[ev][it]}", end=end)
+                print(f"simTrkIdx {self.data.ph2_simhit_simTrkIdx[ev][it]}", end=end)
+                print(f"simhit_pt {self.data.ph2_simhit_pt[ev][it]:.1f}", end=end)
                 print("")
             print("")
 
-            simhit_n = len(self.data.simhit_x[ev])
-            # print(f"Event {ev}, {simhit_n=}")
-            for it in range(simhit_n):
-                if True or self.data.simhit_layer[ev][it] != 6:
-                    continue
-                print(f"Event {ev}", end=end)
-                print(f"simhit {it:02}", end=end)
-                print(f"pt {self.data.simhit_pt[ev][it]:5.2f}", end=end)
-                print(f"layer {self.data.simhit_layer[ev][it]}", end=end)
-                print(f"isUpper {self.data.simhit_isUpper[ev][it]}", end=end)
-                print(f"rod {self.data.simhit_rod[ev][it]:02}", end=end)
-                print(f"module {self.data.simhit_module[ev][it]:02}", end=end)
-                print(f"TOF {self.data.simhit_tof[ev][it]:7.4f}", end=end)
-                print(f"r {self.data.simhit_rt[ev][it]:5.1f}", end=end)
-                print(f"phi {self.data.simhit_phi[ev][it]:7.4f}", end=end)
-                print(f"z {self.data.simhit_z[ev][it]:7.3f}", end=end)
-                print(f"cos(dphi) {self.data.simhit_cosphi[ev][it]:6.3f}", end=end)
-                print("")
+
+        #
+        # helper functions for plotting
+        #
+        def rotate(_xs, _ys, angle):
+            x = _xs * np.cos(angle) - _ys * np.sin(angle)
+            y = _xs * np.sin(angle) + _ys * np.cos(angle)
+            return x, y
+
+        def centerfy(_xs, _ys):
+            if min(_xs) != max(_xs):
+                slope, intercept = np.polyfit(_xs, _ys, 1)
+                angle = np.arctan(slope)
+            else:
+                angle = np.pi / 2
+            # print(f"angle: {angle}")
+            xps, yps = rotate(xs, ys, -angle)
+            return xps, yps, angle
+        
+        def get_x_edges(_xs, _sizes):
+            if len(_sizes) == 0:
+                return []
+            xstart = None
+            for x, clustSize in zip(_xs, _sizes):
+                if clustSize % 2 == 0:
+                    xstart = x
+            if xstart is None:
+                for x, clustSize in zip(_xs, _sizes):
+                    xstart = x + 0.5 * PITCH_CM
+            if xstart is None:
+                raise Exception("What the fuck")
+            # print(f"Found {xstart=}")
+            xlines = []
+            xstart_l, xstart_r = xstart, xstart
+            while xstart_l > xmin:
+                xlines.append(xstart_l)
+                xstart_l -= PITCH_CM
+            while xstart_r < xmax:
+                xlines.append(xstart_r)
+                xstart_r += PITCH_CM
+            return sorted(list(set(xlines)))
+
 
         #
         # plot a few events in their local coordinates (attempt)
         #
         for it, ev in enumerate(events_of_interest):
-            
+
+            if it >= num:
+                break
+
             ph2_n = len(self.data.ph2_x[ev])
             end = " "
             print(f"Event {ev}, {ph2_n=}")
 
-            hits = range(34, 39)
-            for it in hits:
-                continue
-                print(f"Event {ev}", end=end)
-                print(f"hit {it:02}", end=end)
-                print(f"barrelFlat {int(self.data.ph2_isBarrelFlat[ev][it])}", end=end)
-                print(f"layer {self.data.ph2_layer[ev][it]}", end=end)
-                print(f"isUpper {self.data.ph2_isUpper[ev][it]}", end=end)
-                print(f"rod {self.data.ph2_rod[ev][it]:02}", end=end)
-                print(f"module {self.data.ph2_module[ev][it]:02}", end=end)
-                print(f"r {self.data.ph2_rt[ev][it]:5.1f}", end=end)
-                print(f"phi {self.data.ph2_phi[ev][it]:7.4f}", end=end)
-                print(f"TOF {self.data.ph2_simhit_tof[ev][it]:7.4f}", end=end)
-                print(f"cos(dphi) {self.data.ph2_simhit_cosphi[ev][it]:6.3f}", end=end)
-                print(f"clustSize {self.data.ph2_clustSize[ev][it]}", end=end)
-                print(f"simHitIdx {self.data.ph2_simHitIdx[ev][it]}", end=end)
-                print("")
-# ph2_simhit_rdphi
+            __mask = \
+                self.data[ev].ph2_isBarrelFlat & \
+                (self.data[ev].ph2_layer == 6) & \
+                (self.data[ev].ph2_simhit_tof < 10) & \
+                (self.data[ev].ph2_simhit_cosphi > 0.15)
+            all_hits = np.flatnonzero(__mask)
+            simhits = ak.flatten(self.data.ph2_simHitIdx[ev][all_hits])
+            print("simhits", np.unique(simhits))
 
-            # hits = range(34, 39)
-            hits = range(34, 37)
-            fig, ax = plt.subplots(figsize=(8, 8))
-            xs = self.data.ph2_x[ev][hits]
-            ys = self.data.ph2_y[ev][hits]
-            clustSizes = self.data.ph2_clustSize[ev][hits]
-            slope, intercept = np.polyfit(xs, ys, 1)
+            for simhit in np.unique(simhits):
 
-            def get_angle_wrt_vertical(x, y):
-                angle = np.arctan2(x, y)
-                return angle
+                hits = np.flatnonzero(self.data[ev].ph2_simHitIdxFirst == simhit)
+                isUpper = bool(self.data[ev].simhit_isUpper[simhit])
+                # print(ev, simhit, hits)
 
-            def rotate(_xs, _ys, angle):
-                x = _xs * np.cos(angle) - _ys * np.sin(angle)
-                y = _xs * np.sin(angle) + _ys * np.cos(angle)
-                return x, y
+            # for isUpper in [True, False]:
 
-            #angle = get_angle_wrt_vertical(xs[0], ys[0])
-            #print(f"angle: {angle}")
-            angle = np.arctan(slope)
-            print(f"angle: {angle}")
-            #angle = np.arctan2(slope, 1)
-            #print(f"angle: {angle}")
-            xps, yps = rotate(xs, ys, -angle)
+            #     # if ev == 3:
+            #     #     hits = range(34, 37) if not isUpper else range(37, 38)
+            #     #     # isUpper = False
+            #     # elif ev == 9:
+            #     #     hits = range(26, 28) if not isUpper else range(28, 30)
+            #     #     # isUpper = False
+            #     # else:
+            #     #     raise Exception("fuck fuck fuck")
 
-            # ax.set_xlim([-120, 120])
-            # ax.set_ylim([-120, 120])
-            # ax.set_xlim([-20, 20])
-            # ax.set_ylim([105, 115])
-            # xmin, xmax = [1.65, 1.85]
-            # ymin, ymax = [109.9, 110.1]
-            # print("yps", yps)
-            delta = 0.05
-            xmin, xmax = min(xps) - delta, max(xps) + delta
-            ymin, ymax = min(yps) - delta, max(yps) + delta
-            yavg = np.mean(yps)
-            ax.set_xlim([xmin, xmax])
-            ax.set_ylim([ymin, ymax])
-            xline = xmin + 0.0005 # 0.013
-            pitch = 90 / 1000.0 / 10.0 # cm
-            for txt in range(len(xps)):
-                ax.text(xps[txt], yps[txt] + 0.016, "Size", fontsize=10, ha="center", va="bottom")
-                ax.text(xps[txt], yps[txt] + 0.013, clustSizes[txt], fontsize=10, ha="center", va="bottom")
+            #     __mask = \
+            #         self.data[ev].ph2_isBarrelFlat & \
+            #         (self.data[ev].ph2_layer == 6) & \
+            #         (self.data[ev].ph2_isUpper == isUpper) & \
+            #         (self.data[ev].ph2_simhit_tof < 10) & \
+            #         (self.data[ev].ph2_simhit_cosphi > 0.15)
+            #     hits = np.flatnonzero(__mask)
 
-            while xline < xmax:
-                ax.plot([xline, xline], [yavg - 0.01, yavg + 0.01], color="gray")
-                xline += pitch
+                # gotta figure this out
+                #############################################
+                # if ev == 3 and isUpper == False:
+                #     hits = range(34, 37)
+                #############################################
 
-            ax.scatter(xs, ys, c="blue")
-            ax.scatter(xps, yps, c="green")
-            ax.tick_params(right=True, top=True)
-            ax.set_xlabel("x [cm]")
-            ax.set_ylabel("y [cm]")
-            ax.set_title(f"Event {ev}, layer 6, isUpper=False")
-            pdf.savefig()
-            plt.close()
-            break
+                # xs_total = self.data.ph2_x[ev][hits_total]
+                # ys_total = self.data.ph2_y[ev][hits_total]
+                # x_median = np.median(xs_total)
+                # y_median = np.median(ys_total)
+
+                xs = self.data.ph2_x[ev][hits]
+                ys = self.data.ph2_y[ev][hits]
+                clustSizes = self.data.ph2_clustSize[ev][hits]
+                rdphis = self.data.ph2_simhit_rdphi[ev][hits]
+                xps, yps, angle = centerfy(xs, ys) if len(xs) > 1 else (xs, ys, 0)
+                yavg = np.mean(yps)
+
+                # rotate the sim hit, too
+                simhit_x = self.data.simhit_x[ev][simhit]
+                simhit_y = self.data.simhit_y[ev][simhit]
+                simhit_xp, simhit_yp = rotate(simhit_x, simhit_y, -angle)
+                simhit_yp = yavg
+
+                # some drawing parameters
+                delta = 0.06
+                xmin, xmax = min(xps) - delta, max(xps) + delta
+                ymin, ymax = min(yps) - delta, max(yps) + delta
+
+                # the canvas
+                fig, ax = plt.subplots(figsize=(8, 8))
+                ax.set_xlim([xmin, xmax])
+                ax.set_ylim([ymin, ymax])
+
+                # annotating with text
+                ax.text(0.1, 0.86, "Sim. hit", transform=ax.transAxes, fontsize=20, color="red")
+                ax.text(0.1, 0.80, "ph2 hits", transform=ax.transAxes, fontsize=20, color="black")
+                ha, va = "center", "bottom"
+                for txt in range(len(xps)):
+                    ax.text(xps[txt], yps[txt] + 0.32*delta, "Size", fontsize=10, ha=ha, va=va)
+                    ax.text(xps[txt], yps[txt] + 0.26*delta, clustSizes[txt], fontsize=10, ha=ha, va=va)
+                    ax.text(xps[txt], yps[txt] - 0.26*delta, r"$r*d\phi$", fontsize=10, ha=ha, va=va)
+                    ax.text(xps[txt], yps[txt] - 0.32*delta, f"{int(rdphis[txt] * 10 * 1e3)} um", fontsize=10, ha=ha, va=va)
+
+                # draw strip boundaries
+                xlines = get_x_edges(xps, clustSizes)
+                for xline in xlines:
+                    ax.plot([xline, xline], [yavg - 0.01, yavg + 0.01], color="gray")
+
+                # draw hits
+                ax.scatter(xps, yps, c="black")
+                ax.scatter(simhit_xp, simhit_yp, c="red")
+                ax.tick_params(right=True, top=True)
+                ax.set_xlabel("x [cm]")
+                ax.set_ylabel("y [cm]")
+                ax.set_title(f"Event {ev}, layer 6, simhit={int(simhit)}, {isUpper=}")
+                pdf.savefig()
+                plt.close()
 
 
 
