@@ -669,7 +669,7 @@ class Plotter:
                 print("")
             print("")
 
-    def plot_local_hits(self, pdf: PdfPages, num: int = 10) -> None:
+    def plot_local_hits(self, pdf: PdfPages, num: int = 10_000) -> None:
 
         #
         # helper functions for plotting
@@ -738,15 +738,6 @@ class Plotter:
             if it >= num:
                 break
 
-            # mask = \
-            #     self.data[ev].ph2_isBarrelFlat & \
-            #     (self.data[ev].ph2_layer == 6) & \
-            #     (self.data[ev].ph2_simhit_tof < 10) & \
-            #     (self.data[ev].ph2_simhit_cosphi > 0.15)
-            # all_hits = np.flatnonzero(mask)
-            # simhits = ak.flatten(self.data.ph2_simHitIdx[ev][all_hits])
-            # print(ev, np.sort(np.unique(simhits)))
-
             mask = \
                 self.data[ev].simhit_isBarrelFlat & \
                 (self.data[ev].simhit_layer == 6) & \
@@ -755,21 +746,19 @@ class Plotter:
                 (self.data[ev].simhit_p > 0.5 * self.data[ev].simhit_simtrk_p) & \
                 (self.data[ev].simhit_cosphi > 0.15)
             simhits = np.flatnonzero(mask)
-            # print(ev, np.sort(np.unique(simhits)))
-            # print("")            
 
-
-
+            # one event display per sim hit
             for simhit in np.unique(simhits):
 
-                hits = np.flatnonzero(self.data[ev].ph2_simHitIdxFirst == simhit)
                 isUpper = "isUpper" if bool(self.data[ev].simhit_isUpper[simhit]) else "isLower"
+
+                hits = np.flatnonzero(self.data[ev].ph2_simHitIdxFirst == simhit)
                 n_ph2_hits.append(len(hits))
                 if len(hits) == 0:
                     continue
 
                 if it > 10:
-                    if it % 10 == 0:
+                    if it % 100 == 0:
                         print(f"Skipping event {ev}, simhit {simhit}")
                     continue
 
@@ -784,7 +773,7 @@ class Plotter:
                 simhit_x = self.data.simhit_x[ev][simhit]
                 simhit_y = self.data.simhit_y[ev][simhit]
                 simhit_xp, simhit_yp = rotate(simhit_x, simhit_y, -angle)
-                simhit_yp = yavg
+                # simhit_yp = yavg
 
                 # some drawing parameters
                 delta = 0.06
