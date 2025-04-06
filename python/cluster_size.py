@@ -619,7 +619,7 @@ class Plotter:
         plt.close()
 
 
-    def dump_event_info(self, pdf: PdfPages, num: int = 10_000) -> None:
+    def dump_event_info(self, pdf: PdfPages, num: int = 5) -> None:
 
         #
         # get events with hits in barrel (flat) layer 6
@@ -679,12 +679,16 @@ class Plotter:
             y = _xs * np.sin(angle) + _ys * np.cos(angle)
             return x, y
 
-        def centerfy(_xs, _ys):
+        def get_angle(_xs, _ys):
             if min(_xs) != max(_xs):
                 slope, intercept = np.polyfit(_xs, _ys, 1)
                 angle = np.arctan(slope)
             else:
                 angle = np.pi / 2
+            return angle
+
+        def centerfy(_xs, _ys):
+            angle = get_angle(_xs, _ys)
             # print(f"angle: {angle}")
             xps, yps = rotate(xs, ys, -angle)
             return xps, yps, angle
@@ -762,18 +766,25 @@ class Plotter:
                         print(f"Skipping event {ev}, simhit {simhit}")
                     continue
 
+                # get the reco hits
                 xs = self.data.ph2_x[ev][hits]
                 ys = self.data.ph2_y[ev][hits]
                 clustSizes = self.data.ph2_clustSize[ev][hits]
                 rdphis = self.data.ph2_simhit_rdphi[ev][hits]
-                xps, yps, angle = centerfy(xs, ys) if len(xs) > 1 else (xs, ys, 0)
-                yavg = np.mean(yps)
 
-                # rotate the sim hit, too
+                # get the sim hits
                 simhit_x = self.data.simhit_x[ev][simhit]
                 simhit_y = self.data.simhit_y[ev][simhit]
+
+                # get the angle of the hits' surface
+                all_xs = ak.concatenate([xs, simhit_x])
+                all_ys = ak.concatenate([ys, simhit_y])
+                angle = get_angle(all_xs, all_ys)
+
+                # rotate the hits
+                xps, yps = rotate(xs, ys, -angle)
                 simhit_xp, simhit_yp = rotate(simhit_x, simhit_y, -angle)
-                # simhit_yp = yavg
+                ypavg = np.mean(yps)
 
                 # some drawing parameters
                 delta = 0.06
@@ -807,7 +818,7 @@ class Plotter:
                 # draw strip boundaries
                 xlines = get_x_edges(xps, clustSizes)
                 for xline in xlines:
-                    ax.plot([xline, xline], [yavg - 0.01, yavg + 0.01], color="lightgray", zorder=1)
+                    ax.plot([xline, xline], [ypavg - 0.01, ypavg + 0.01], color="lightgray", zorder=1)
 
                 pdf.savefig()
                 plt.close()
