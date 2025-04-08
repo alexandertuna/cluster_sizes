@@ -39,7 +39,7 @@ def layer_name(layer: int) -> str:
 
 
 def main():
-    fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.root")
+    fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
     data = Data(fname).data
     plotter = Plotter(data)
     plotter.plot("cluster_size_displays.pdf")
@@ -76,6 +76,7 @@ class Plotter:
         # keep track of n(ph2 hits) for each sim hit
         #
         n_ph2_hits = []
+        n_sim_hits = []
 
 
         #
@@ -101,12 +102,21 @@ class Plotter:
 
                 isUpper = "isUpper" if bool(self.data[ev].simhit_isUpper[simhit]) else "isLower"
 
+                # get matching reco (ph2) hits
                 hits = np.flatnonzero(self.data[ev].ph2_simHitIdxFirst == simhit)
+                # hits = np.flatnonzero(
+                #     (self.data[ev].ph2_isBarrelFlat == self.data[ev].simhit_isBarrelFlat[simhit]) & \
+                #     (self.data[ev].ph2_layer == self.data[ev].simhit_layer[simhit]) & \
+                #     (self.data[ev].ph2_isUpper == self.data[ev].simhit_isUpper[simhit]) & \
+                #     (self.data[ev].ph2_rod == self.data[ev].simhit_rod[simhit]) & \
+                #     (self.data[ev].ph2_module == self.data[ev].simhit_module[simhit])
+                # )
+                # print(f"Event {ev}, simhit {simhit}, ph2_hits {hits}")
                 n_ph2_hits.append(len(hits))
                 if len(hits) == 0:
                     continue
 
-                if it > 10:
+                if it > 20:
                     if it % 200 == 0:
                         print(f"Skipping event {ev}, simhit {simhit}")
                     continue
@@ -121,6 +131,21 @@ class Plotter:
                 simhit_x = self.data.simhit_x[ev][simhit]
                 simhit_y = self.data.simhit_y[ev][simhit]
 
+                # get other simhits too
+                more_simhits = np.flatnonzero(
+                    (self.data[ev].simhit_tof < 10) & \
+                    (self.data[ev].simhit_p > 0.5 * self.data[ev].simhit_simtrk_p) & \
+                    (self.data[ev].simhit_isBarrelFlat == self.data[ev].simhit_isBarrelFlat[simhit]) & \
+                    (self.data[ev].simhit_layer == self.data[ev].simhit_layer[simhit]) & \
+                    (self.data[ev].simhit_isUpper == self.data[ev].simhit_isUpper[simhit]) & \
+                    (self.data[ev].simhit_rod == self.data[ev].simhit_rod[simhit]) & \
+                    (self.data[ev].simhit_module == self.data[ev].simhit_module[simhit])
+                    #(self.data[ev].simhit_pt > MIN_PT) & \
+                )
+                n_sim_hits.append(len(more_simhits))
+                simhit_xs = self.data.simhit_x[ev][more_simhits]
+                simhit_ys = self.data.simhit_y[ev][more_simhits]
+
                 # get the angle of the hits' surface
                 all_xs = ak.concatenate([xs, simhit_x])
                 all_ys = ak.concatenate([ys, simhit_y])
@@ -129,6 +154,7 @@ class Plotter:
                 # rotate the hits
                 xps, yps = rotate(xs, ys, -angle)
                 simhit_xp, simhit_yp = rotate(simhit_x, simhit_y, -angle)
+                simhit_xps, simhit_yps = rotate(simhit_xs, simhit_ys, -angle)
                 ypavg = np.mean(yps)
 
                 # some drawing parameters
@@ -153,6 +179,7 @@ class Plotter:
                     ax.text(xps[txt], yps[txt] - 0.32*delta, f"{int(rdphis[txt] * 10 * 1e3)} um", fontsize=10, ha=ha, va=va)
 
                 # draw hits
+                ax.scatter(simhit_xps, simhit_yps, c="blue", zorder=999)
                 ax.scatter(simhit_xp, simhit_yp, c="red", zorder=999)
                 ax.scatter(xps, yps, c="black", zorder=99)
                 ax.tick_params(right=True, top=True)
@@ -180,11 +207,22 @@ class Plotter:
                 plt.close()
 
 
-        # summary histogram
+        # summary histogram (1)
         fig, ax = plt.subplots(figsize=(8, 8))
         ax.hist(n_ph2_hits, bins=np.arange(-0.5, 8.5, 1), color="blue", edgecolor="black")
         ax.set_xlabel("Number of ph2 hits")
         ax.set_ylabel("Sim. hits")
+        ax.tick_params(right=True, top=True)
+        pdf.savefig()
+        plt.close()
+
+        # summary histogram (2)
+        n_sim_hits = np.array(n_sim_hits)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.hist(n_sim_hits, weights=1.0/n_sim_hits, bins=np.arange(-0.5, 8.5, 1), color="red", edgecolor="black")
+        ax.set_xlabel("Number of sim hits per module")
+        ax.set_ylabel("Sim. hits")
+        ax.tick_params(right=True, top=True)
         pdf.savefig()
         plt.close()
 
@@ -245,6 +283,7 @@ class Data:
     def get_array(self) -> ak.Array:
         tree = uproot.open(f"{self.fname}:trackingNtuple/tree")
         print(f"Got TTree: {tree}")
+        # print(f"Tree keys: {tree.keys()}")
         data = tree.arrays([
             'event',
             'trk_pt', 'trk_eta', 'trk_phi',
