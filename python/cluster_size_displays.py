@@ -18,6 +18,8 @@ LAYERS = [6]
 MIN_PT = 0.6
 PITCH_UM = 90
 PITCH_CM = PITCH_UM / 1000.0 / 10.0
+DONT_ROTATE = False
+COLOR_WITH_MOMENTUM = True
 
 
 def region_name(region: str) -> str:
@@ -102,6 +104,25 @@ class Plotter:
 
                 isUpper = "isUpper" if bool(self.data[ev].simhit_isUpper[simhit]) else "isLower"
 
+                # get neighboring simhits as a crosscheck
+                more_simhits = np.flatnonzero(
+                    (self.data[ev].simhit_tof < 10) & \
+                    (self.data[ev].simhit_isBarrelFlat == self.data[ev].simhit_isBarrelFlat[simhit]) & \
+                    (self.data[ev].simhit_layer == self.data[ev].simhit_layer[simhit]) & \
+                    (self.data[ev].simhit_isUpper == self.data[ev].simhit_isUpper[simhit]) & \
+                    (self.data[ev].simhit_rod == self.data[ev].simhit_rod[simhit]) & \
+                    (self.data[ev].simhit_module == self.data[ev].simhit_module[simhit])
+                    #(self.data[ev].simhit_pt > MIN_PT) & \
+                    #(self.data[ev].simhit_tof < 10) & \
+                    #(self.data[ev].simhit_p > 0.5 * self.data[ev].simhit_simtrk_p) & \
+                )
+                n_sim_hits.append(len(more_simhits))
+                if it < 20:
+                    print(f"Event {ev}, simhit {simhit}, more_simhits {more_simhits}")
+                simhit_xs = self.data.simhit_x[ev][more_simhits]
+                simhit_ys = self.data.simhit_y[ev][more_simhits]
+                simhit_ps = self.data.simhit_p[ev][more_simhits]
+
                 # get matching reco (ph2) hits
                 hits = np.flatnonzero(self.data[ev].ph2_simHitIdxFirst == simhit)
                 # hits = np.flatnonzero(
@@ -131,25 +152,10 @@ class Plotter:
                 simhit_x = self.data.simhit_x[ev][simhit]
                 simhit_y = self.data.simhit_y[ev][simhit]
 
-                # get other simhits too
-                more_simhits = np.flatnonzero(
-                    (self.data[ev].simhit_tof < 10) & \
-                    (self.data[ev].simhit_p > 0.5 * self.data[ev].simhit_simtrk_p) & \
-                    (self.data[ev].simhit_isBarrelFlat == self.data[ev].simhit_isBarrelFlat[simhit]) & \
-                    (self.data[ev].simhit_layer == self.data[ev].simhit_layer[simhit]) & \
-                    (self.data[ev].simhit_isUpper == self.data[ev].simhit_isUpper[simhit]) & \
-                    (self.data[ev].simhit_rod == self.data[ev].simhit_rod[simhit]) & \
-                    (self.data[ev].simhit_module == self.data[ev].simhit_module[simhit])
-                    #(self.data[ev].simhit_pt > MIN_PT) & \
-                )
-                n_sim_hits.append(len(more_simhits))
-                simhit_xs = self.data.simhit_x[ev][more_simhits]
-                simhit_ys = self.data.simhit_y[ev][more_simhits]
-
                 # get the angle of the hits' surface
                 all_xs = ak.concatenate([xs, simhit_x])
                 all_ys = ak.concatenate([ys, simhit_y])
-                angle = get_angle(all_xs, all_ys)
+                angle = 0 if DONT_ROTATE else get_angle(all_xs, all_ys)
 
                 # rotate the hits
                 xps, yps = rotate(xs, ys, -angle)
@@ -168,27 +174,46 @@ class Plotter:
                 ax.set_ylim([ymin, ymax])
 
                 # annotating with text
-                ax.text(0.1, 0.86, "Sim. hit", transform=ax.transAxes, fontsize=20, color="red")
-                ax.text(0.1, 0.80, "ph2 hits", transform=ax.transAxes, fontsize=20, color="black")
-                ax.text(0.1, 0.74, "Strip edges", transform=ax.transAxes, fontsize=20, color="gray")
+                if COLOR_WITH_MOMENTUM:
+                    ax.text(0.1, 0.85, "Sim. hits (colorized)", transform=ax.transAxes, fontsize=20, color="red")
+                else:
+                    ax.text(0.1, 0.91, "Sim. hit", transform=ax.transAxes, fontsize=20, color="red")
+                    ax.text(0.1, 0.85, "Sim. hit (other)", transform=ax.transAxes, fontsize=20, color="blue")
+                ax.text(0.1, 0.79, "ph2 hits", transform=ax.transAxes, fontsize=20, color="black")
+                ax.text(0.1, 0.73, "Strip edges", transform=ax.transAxes, fontsize=20, color="gray")
                 ha, va = "center", "bottom"
                 for txt in range(len(xps)):
+                    if DONT_ROTATE:
+                        continue
                     ax.text(xps[txt], yps[txt] + 0.32*delta, "Size", fontsize=10, ha=ha, va=va)
                     ax.text(xps[txt], yps[txt] + 0.26*delta, clustSizes[txt], fontsize=10, ha=ha, va=va)
                     ax.text(xps[txt], yps[txt] - 0.26*delta, r"$r*d\phi$", fontsize=10, ha=ha, va=va)
                     ax.text(xps[txt], yps[txt] - 0.32*delta, f"{int(rdphis[txt] * 10 * 1e3)} um", fontsize=10, ha=ha, va=va)
 
+                # coloring options for the other sim hits
+                cmap = "jet"
+                vmin, vmax = -5, 0.5
+
                 # draw hits
-                ax.scatter(simhit_xps, simhit_yps, c="blue", zorder=999)
-                ax.scatter(simhit_xp, simhit_yp, c="red", zorder=999)
+                if COLOR_WITH_MOMENTUM:
+                    sc = ax.scatter(simhit_xps, simhit_yps, c=np.log10(simhit_ps), cmap=cmap, vmin=vmin, vmax=vmax, zorder=999)
+                    fig.colorbar(sc, label="log10(sim. hit p [GeV])")
+                    fig.subplots_adjust(right=0.96)
+                else:
+                    ax.scatter(simhit_xps, simhit_yps, c="blue", zorder=999)
+                    ax.scatter(simhit_xp, simhit_yp, c="red", zorder=999)
                 ax.scatter(xps, yps, c="black", zorder=99)
                 ax.tick_params(right=True, top=True)
-                ax.set_xlabel("local x [cm]")
-                ax.set_ylabel("local y [cm]")
+                frame = "global" if DONT_ROTATE else "local"
+                ax.set_xlabel(f"{frame} x [cm]")
+                ax.set_ylabel(f"{frame} y [cm]")
                 ax.set_title(f"Event {ev}, layer 6, simhit={int(simhit)}, {isUpper}")
+
 
                 # draw cluster sizes
                 for txt in range(len(xps)):
+                    if DONT_ROTATE:
+                        continue
                     corner_x = xps[txt] - 0.5 * clustSizes[txt] * PITCH_CM
                     corner_y = yps[txt] - 0.01
                     height = 2 * 0.01
@@ -200,6 +225,8 @@ class Plotter:
                 # draw strip boundaries
                 xlines = get_x_edges(xps, clustSizes, xmin, xmax)
                 for xline in xlines:
+                    if DONT_ROTATE:
+                        continue
                     ax.plot([xline, xline], [ypavg - 0.01, ypavg + 0.01], color="gray", zorder=1)
 
                 # save
