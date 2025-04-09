@@ -46,10 +46,10 @@ def main():
     if "200" in title:
         fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
     else:
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.root")
+        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.10muon_0p5gev_1p5gev.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_01_10h06m00s.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
-        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_11h00m00s.1muon_1p5gev.root")
+        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_11h00m00s.1muon_1p5gev.root")
     data = Data(fname).data
     plotter = Plotter(data)
     plotter.plot(title, "cluster_size.pdf")
@@ -83,7 +83,7 @@ class Plotter:
             # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.6, 0.7])
             # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.7, 0.8])
             # self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
-            # self.plot_pt_vs_cosphi(pdf)
+            self.plot_pt_vs_cosphi(pdf)
             # self.plot_simhit_dphi(pdf)
             # self.plot_simtrk_vs_simhit(pdf)
             # self.plot_simhit_pt_and_p(pdf)
