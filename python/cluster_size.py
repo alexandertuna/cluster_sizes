@@ -46,9 +46,9 @@ def main():
     if "200" in title:
         fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
     else:
-        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.10muon_0p5gev_1p5gev.root")
+        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.10muon_0p5gev_1p5gev.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_01_10h06m00s.root")
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
+        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_11h00m00s.1muon_1p5gev.root")
     data = Data(fname).data
     plotter = Plotter(data)
@@ -68,6 +68,7 @@ class Plotter:
             self.plot_title(title, pdf)
             self.plot_pt_eta_phi(pdf)
             self.plot_tof(pdf)
+            self.plot_tof_vs_cosphi(pdf)
             self.plot_cluster_size(pdf)
             self.plot_cluster_size_cdf(pdf)
             self.plot_cluster_size_vs_rdphi(pdf)
@@ -150,10 +151,6 @@ class Plotter:
         for region in REGIONS:
             reg = region_name(region)
             _mask = self.data[f"ph2_is{region}"]
-            # _mask = \
-            #     (self.data.ph2_simhit_pt > MIN_PT) & \
-            #     (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & \
-            #     self.data[f"ph2_is{region}"]
             for layer in LAYERS:
                 mask = _mask & ((layer == 0) | (self.data.ph2_layer == layer))
                 total = ak.sum(mask)
@@ -167,6 +164,35 @@ class Plotter:
                     ax.tick_params(right=True, top=True)
                 if total > 0:
                     axs[1].semilogy()
+                pdf.savefig()
+                plt.close()
+
+
+    def plot_tof_vs_cosphi(self, pdf: PdfPages) -> None:
+        bins_cosphi = np.arange(-1, 1.01, 0.02)
+        bins_tof = np.arange(-0.5, 21.5, 0.1)
+        for region in REGIONS:
+            reg = region_name(region)
+            _mask = self.data[f"ph2_is{region}"]
+            for layer in LAYERS:
+                mask = _mask & ((layer == 0) | (self.data.ph2_layer == layer))
+                total = ak.sum(mask)
+                lay = layer_name(layer)
+                fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+                for it, ax in enumerate(axs):
+                    _, _, _, im = ax.hist2d(ak.flatten(self.data.ph2_simhit_cosphi[mask]).to_numpy(),
+                                            ak.flatten(self.data.ph2_simhit_tof[mask]).to_numpy(),
+                                            bins=[bins_cosphi, bins_tof],
+                                            cmin=0.5,
+                                            cmap="hot",
+                                            norm=mpl.colors.LogNorm() if (total > 0 and it == 1)  else None,
+                                            )
+                    ax.set_title(f"All hits, {reg}, {lay}")
+                    ax.set_xlabel("cos($\\phi$) of $p_{T, sim}$ and $x_{T, sim}$")
+                    ax.set_ylabel("Time-of-flight (TOF) [ns]")
+                    fig.colorbar(im, ax=ax, label="Hits (ph2_*)")
+                    fig.subplots_adjust(wspace=0.30, right=0.95, left=0.10, bottom=0.15)
+                    ax.tick_params(right=True, top=True)
                 pdf.savefig()
                 plt.close()
 
