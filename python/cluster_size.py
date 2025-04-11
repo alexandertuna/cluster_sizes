@@ -42,14 +42,15 @@ def layer_name(layer: int) -> str:
 def main():
     # title = "TenMuExtendedE_0_200 (p 0-200 GeV)"
     # title = "DoubleMuPt1Extended ($p_{T}$ 0.5-1.5 GeV)"
-    title = "DoubleMuPt1Extended ($p_{T}$ 0.68-0.70 GeV), 1 muon"
+    title = "DoubleMuPt1Extended ($p_{T}$ 0.5-5.0 GeV), 10 muons"
     if "200" in title:
         fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
     else:
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.10muon_0p5gev_1p5gev.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_01_10h06m00s.root")
-        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_11h00m00s.1muon_1p5gev.root")
+        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
+        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_13h00m00s.1muon_1p5gev.root")
+        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
     data = Data(fname).data
     plotter = Plotter(data)
     plotter.plot(title, "cluster_size.pdf")
@@ -76,7 +77,8 @@ class Plotter:
             self.plot_cluster_size_vs_cosphi(pdf)
             self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
             self.plot_cluster_size_vs_pt(pdf)
-            self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
+            self.plot_cluster_size_vs_pt(pdf, cdf=True)
+            # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
             # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.2, 0.3])
             # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.4])
             # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.4, 0.5])
@@ -105,7 +107,7 @@ class Plotter:
 
 
     def plot_pt_eta_phi(self, pdf: PdfPages) -> None:
-        bins_pt = np.arange(0, 5, 0.05)
+        bins_pt = np.arange(0, 6, 0.05)
         bins_etaphi = [
             np.arange(-3, 3, 0.1),
             np.arange(-3.2, 3.25, 0.1)
@@ -395,7 +397,7 @@ class Plotter:
 
     def plot_cluster_size_vs_pt(self, pdf: PdfPages, cdf=False) -> None:
         bins = [
-            np.arange(0.6, 1.6, 0.01),
+            np.arange(0.6, 5.1, 0.1),
             np.arange(-0.5, 17.5, 1),
         ]
         mask_basic = (self.data.ph2_simhit_pt > MIN_PT) & (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & (self.data.ph2_simhit_cosphi > 0.15)
