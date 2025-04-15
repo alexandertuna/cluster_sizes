@@ -50,7 +50,8 @@ def main():
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_01_10h06m00s.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
         # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_13h00m00s.1muon_1p5gev.root")
-        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
+        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
+        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_12_00h00m00s.10muon_0p5_5p0.root")
     data = Data(fname).data
     plotter = Plotter(data)
     plotter.plot(title, "cluster_size.pdf")
