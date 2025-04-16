@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import math
 import uproot
 from pathlib import Path
 import awkward as ak
@@ -9,16 +8,47 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from enum import Enum
 import tqdm
 mpl.rcParams['font.size'] = 11
 
+SUMMARIZE = True
+
 # REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
 REGIONS = ["BarrelFlat"]
-LAYERS = [0, 1, 2, 3, 4, 5, 6]
+# LAYERS = [0, 1, 2, 3, 4, 5, 6]
+LAYERS = [1, 2, 3, 4, 5, 6]
 # LAYERS = [6]
 MIN_PT = 0.6
 PITCH_UM = 90
 PITCH_CM = PITCH_UM / 1000.0 / 10.0
+
+class Zaxis(Enum):
+    NORMAL = 1
+    ONE_MINUS = 2
+    ZOOMED = 3
+
+
+
+def main():
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.10muon_0p5gev_1p5gev.root")
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_01_10h06m00s.root")
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_13h00m00s.1muon_1p5gev.root")
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
+    fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_12_00h00m00s.10muon_0p5_5p0.root")
+    title = get_title(fname)
+    data = Data(fname).data
+    plotter = Plotter(data)
+    plotter.plot(title, "cluster_size.pdf")
+
+
+def get_title(fname: Path) -> str:
+    basename = fname.stem
+    if "2025_04_12_00h00m00s.10muon_0p5_5p0" in basename:
+        return "10 muons, $p_{T}$ range [0.5, 5.0], 50k events"
+    raise Exception(f"Unknown file name: {fname}")
 
 
 def region_name(region: str) -> str:
@@ -39,24 +69,6 @@ def layer_name(layer: int) -> str:
     return f"layer {layer}"
 
 
-def main():
-    # title = "TenMuExtendedE_0_200 (p 0-200 GeV)"
-    # title = "DoubleMuPt1Extended ($p_{T}$ 0.5-1.5 GeV)"
-    title = "DoubleMuPt1Extended ($p_{T}$ 0.5-5.0 GeV), 10 muons"
-    if "200" in title:
-        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_15_03h02m56s.root")
-    else:
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_03_21_11h59m00s.10muon_0p5gev_1p5gev.root")
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_01_10h06m00s.root")
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_13h00m00s.1muon_1p5gev.root")
-        # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
-        fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_12_00h00m00s.10muon_0p5_5p0.root")
-    data = Data(fname).data
-    plotter = Plotter(data)
-    plotter.plot(title, "cluster_size.pdf")
-
-
 
 class Plotter:
 
@@ -67,40 +79,52 @@ class Plotter:
     def plot(self, title: str, pdfname: str) -> None:
         self.title = title
         with PdfPages(pdfname) as pdf:
-            self.plot_title(title, pdf)
-            self.plot_pt_eta_phi(pdf)
-            self.plot_tof(pdf)
-            self.plot_tof_vs_cosphi(pdf)
-            self.plot_cluster_size(pdf)
-            self.plot_cluster_size_cdf(pdf)
-            self.plot_cluster_size_vs_rdphi(pdf)
-            self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
-            self.plot_cluster_size_vs_cosphi(pdf)
-            self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
-            self.plot_cluster_size_vs_pt(pdf)
-            self.plot_cluster_size_vs_pt(pdf, cdf=True)
-            # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
-            # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.2, 0.3])
-            # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.4])
-            # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.4, 0.5])
-            # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.5, 0.6])
-            # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.6, 0.7])
-            # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.7, 0.8])
-            # self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
-            self.plot_pt_vs_cosphi(pdf)
-            # self.plot_simhit_dphi(pdf)
-            # self.plot_simtrk_vs_simhit(pdf)
-            # self.plot_simhit_pt_and_p(pdf)
-            # self.plot_simhit_cosphi(pdf)
-            # self.plot_order_and_side(pdf)
-            # self.plot_nsimhit(pdf)
-            # ### self.plot_pdgid(pdf)
-            # self.plot_event_displays(pdf)
-            self.dump_event_info(pdf)
+
+            if SUMMARIZE:
+                # self.plot_title("10 muons, pt range [0.5, 5.0], 50k events", pdf)
+                self.plot_title(title, pdf)
+                self.plot_title("CDF with z-axis range [0, 1]", pdf)
+                self.plot_cluster_size_vs_pt(pdf, cdf=True, zaxis=Zaxis.NORMAL)
+                self.plot_title("CDF with z-axis range [0.99, 1]", pdf)
+                self.plot_cluster_size_vs_pt(pdf, cdf=True, zaxis=Zaxis.ZOOMED)
+                self.plot_title("1-CDF with z-axis range [1e-4, 1]", pdf)
+                self.plot_cluster_size_vs_pt(pdf, cdf=True, zaxis=Zaxis.ONE_MINUS)
+            
+            else:
+                self.plot_title(title, pdf)
+                # self.plot_pt_eta_phi(pdf)
+                # self.plot_tof(pdf)
+                # self.plot_tof_vs_cosphi(pdf)
+                # self.plot_cluster_size(pdf)
+                # self.plot_cluster_size_cdf(pdf)
+                # self.plot_cluster_size_vs_rdphi(pdf)
+                # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
+                # self.plot_cluster_size_vs_cosphi(pdf)
+                # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
+                # self.plot_cluster_size_vs_pt(pdf)
+
+                # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
+                # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.2, 0.3])
+                # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.4])
+                # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.4, 0.5])
+                # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.5, 0.6])
+                # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.6, 0.7])
+                # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.7, 0.8])
+                # self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
+                self.plot_pt_vs_cosphi(pdf)
+                # self.plot_simhit_dphi(pdf)
+                # self.plot_simtrk_vs_simhit(pdf)
+                # self.plot_simhit_pt_and_p(pdf)
+                # self.plot_simhit_cosphi(pdf)
+                # self.plot_order_and_side(pdf)
+                # self.plot_nsimhit(pdf)
+                # ### self.plot_pdgid(pdf)
+                # self.plot_event_displays(pdf)
+                self.dump_event_info(pdf)
 
 
     def plot_title(self, title: str, pdf: PdfPages) -> None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(8, 8))
         ax.text(0.5, 0.5, title, fontsize=16, ha="center")
         ax.axis("off")
         pdf.savefig()
@@ -396,11 +420,14 @@ class Plotter:
                 plt.close()
 
 
-    def plot_cluster_size_vs_pt(self, pdf: PdfPages, cdf=False) -> None:
+    def plot_cluster_size_vs_pt(self, pdf: PdfPages, cdf=False, zaxis=Zaxis.NORMAL) -> None:
         bins = [
-            np.arange(0.6, 5.1, 0.1),
+            np.arange(0.6, 5.1, 0.2),
             np.arange(-0.5, 17.5, 1),
         ]
+        if zaxis not in Zaxis:
+            raise Exception("Invalid zaxis")
+
         mask_basic = (self.data.ph2_simhit_pt > MIN_PT) & (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & (self.data.ph2_simhit_cosphi > 0.15)
 
         for region in REGIONS:
@@ -425,16 +452,31 @@ class Plotter:
                         cumsum.T,
                         column_sums,
                     ))
-                    vmin = 5e-4
+
+                    # plotting options for different z-axes
+                    if zaxis == Zaxis.NORMAL:
+                        cmap = "RdYlGn"
+                        norm = None
+                        contents = cdf_array.T
+                        label = "per-column CDF"
+                    elif zaxis == Zaxis.ONE_MINUS:
+                        cmap = "RdYlGn_r"
+                        vmin = 5e-4
+                        norm = mpl.colors.LogNorm(vmin=vmin) if total > 0 else None
+                        contents = 1 - cdf_array.T + vmin
+                        label = "1 - per-column CDF"
+                    elif zaxis == Zaxis.ZOOMED:
+                        cmap = "RdYlGn"
+                        vmin = 0.99
+                        contents = cdf_array.T
+                        contents[contents < vmin] = vmin
+                        norm = None
+                        label = "per-column CDF"
+
+                    # the plot
                     fig, ax = plt.subplots(figsize=(8, 8))
-                    mesh = ax.pcolormesh(
-                        xedges,
-                        yedges,
-                        1 - cdf_array.T + vmin,
-                        cmap="RdYlGn",
-                        norm=mpl.colors.LogNorm(vmin=vmin) if total > 0 else None,
-                    )
-                    fig.colorbar(mesh, ax=ax, label="1 - per-column CDF")
+                    mesh = ax.pcolormesh(xedges, yedges, contents, cmap=cmap, norm=norm)
+                    fig.colorbar(mesh, ax=ax, label=label)
 
                 else:
                     fig, ax = plt.subplots(figsize=(8, 8))
