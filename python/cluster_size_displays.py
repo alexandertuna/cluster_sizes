@@ -118,7 +118,7 @@ class Plotter:
                 )
                 n_sim_hits.append(len(more_simhits))
                 if it < 20:
-                    print(f"Event {ev}, simhit {simhit}, more_simhits {more_simhits}")
+                    print(f"Event {self.data.event[ev]}, event index {ev}, simhit {simhit}, more_simhits {more_simhits}")
                 simhit_xs = self.data.simhit_x[ev][more_simhits]
                 simhit_ys = self.data.simhit_y[ev][more_simhits]
                 simhit_ps = self.data.simhit_p[ev][more_simhits]
@@ -138,8 +138,8 @@ class Plotter:
                     continue
 
                 if it > 20:
-                    if it % 200 == 0:
-                        print(f"Skipping event {ev}, simhit {simhit}")
+                    #if it % 200 == 0:
+                    #    print(f"Skipping event {ev}, simhit {simhit}")
                     continue
 
                 # get the reco hits
