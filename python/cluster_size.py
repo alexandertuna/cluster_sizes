@@ -12,7 +12,7 @@ from enum import Enum
 import tqdm
 mpl.rcParams['font.size'] = 11
 
-SUMMARIZE = True
+SUMMARIZE = False
 
 # REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
 REGIONS = ["BarrelFlat"]
@@ -92,18 +92,18 @@ class Plotter:
             
             else:
                 self.plot_title(title, pdf)
-                # self.plot_pt_eta_phi(pdf)
-                # self.plot_tof(pdf)
-                # self.plot_tof_vs_cosphi(pdf)
-                # self.plot_cluster_size(pdf)
+                self.plot_pt_eta_phi(pdf)
+                self.plot_tof(pdf)
+                self.plot_tof_vs_cosphi(pdf)
+                self.plot_cluster_size(pdf)
                 # self.plot_cluster_size_cdf(pdf)
-                # self.plot_cluster_size_vs_rdphi(pdf)
+                self.plot_cluster_size_vs_rdphi(pdf)
                 # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
-                # self.plot_cluster_size_vs_cosphi(pdf)
+                self.plot_cluster_size_vs_cosphi(pdf)
                 # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
-                # self.plot_cluster_size_vs_pt(pdf)
+                self.plot_cluster_size_vs_pt(pdf)
 
-                # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
+                self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.2, 0.3])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.4])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.4, 0.5])
@@ -112,7 +112,7 @@ class Plotter:
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.7, 0.8])
                 # self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
                 self.plot_pt_vs_cosphi(pdf)
-                # self.plot_simhit_dphi(pdf)
+                self.plot_simhit_dphi(pdf)
                 # self.plot_simtrk_vs_simhit(pdf)
                 # self.plot_simhit_pt_and_p(pdf)
                 # self.plot_simhit_cosphi(pdf)
@@ -297,7 +297,7 @@ class Plotter:
 
     def plot_cluster_size_vs_rdphi(self, pdf: PdfPages, cosphi=[-1, 1], cdf=False) -> None:
         bins = [
-            np.arange(-0.001, 0.2, 0.005),
+            np.arange(-0.001, 0.10, 0.002),
             np.arange(-0.5, 17.5, 1),
         ]
         cosphi_min, cosphi_max = cosphi
