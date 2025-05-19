@@ -151,6 +151,7 @@ class Plotter:
                 # get the sim hits
                 simhit_x = self.data.simhit_x[ev][simhit]
                 simhit_y = self.data.simhit_y[ev][simhit]
+                simhit_pt = self.data.simhit_pt[ev][simhit]
 
                 # get the angle of the hits' surface
                 all_xs = ak.concatenate([xs, simhit_x])
@@ -166,7 +167,7 @@ class Plotter:
                 # some drawing parameters
                 delta = 0.06
                 xmin, xmax = min(xps) - delta, max(xps) + delta
-                ymin, ymax = min(yps) - delta, max(yps) + delta
+                ymin, ymax = min(yps) - delta * 0.7, max(yps) + delta
 
                 # the canvas
                 fig, ax = plt.subplots(figsize=(8, 8))
@@ -174,19 +175,20 @@ class Plotter:
                 ax.set_ylim([ymin, ymax])
 
                 # annotating with text
+                ax.text(0.1, 0.88, "Sim. track $p_{T}$ = " + f"{simhit_pt:.2f} GeV", transform=ax.transAxes, fontsize=20, color="black")
                 if COLOR_WITH_MOMENTUM:
-                    ax.text(0.1, 0.85, "Sim. hits (colorized)", transform=ax.transAxes, fontsize=20, color="red")
+                    ax.text(0.1, 0.82, "Sim. hits (colorized)", transform=ax.transAxes, fontsize=20, color="red")
                 else:
-                    ax.text(0.1, 0.91, "Sim. hit", transform=ax.transAxes, fontsize=20, color="red")
-                    ax.text(0.1, 0.85, "Sim. hit (other)", transform=ax.transAxes, fontsize=20, color="blue")
-                ax.text(0.1, 0.79, "ph2 hits", transform=ax.transAxes, fontsize=20, color="black")
-                ax.text(0.1, 0.73, "Strip edges", transform=ax.transAxes, fontsize=20, color="gray")
+                    ax.text(0.1, 0.88, "Sim. hit", transform=ax.transAxes, fontsize=20, color="red")
+                    ax.text(0.1, 0.82, "Sim. hit (other)", transform=ax.transAxes, fontsize=20, color="blue")
+                ax.text(0.1, 0.76, "ph2 hits", transform=ax.transAxes, fontsize=20, color="black")
+                ax.text(0.1, 0.70, "Strip edges", transform=ax.transAxes, fontsize=20, color="gray")
                 ha, va = "center", "bottom"
                 for txt in range(len(xps)):
                     if DONT_ROTATE:
                         continue
-                    ax.text(xps[txt], yps[txt] + 0.32*delta, "Size", fontsize=10, ha=ha, va=va)
-                    ax.text(xps[txt], yps[txt] + 0.26*delta, clustSizes[txt], fontsize=10, ha=ha, va=va)
+                    ax.text(xps[txt], yps[txt] + 0.26*delta, "Size", fontsize=10, ha=ha, va=va)
+                    ax.text(xps[txt], yps[txt] + 0.20*delta, clustSizes[txt], fontsize=10, ha=ha, va=va)
                     ax.text(xps[txt], yps[txt] - 0.26*delta, r"$r*d\phi$", fontsize=10, ha=ha, va=va)
                     ax.text(xps[txt], yps[txt] - 0.32*delta, f"{int(rdphis[txt] * 10 * 1e3)} um", fontsize=10, ha=ha, va=va)
 
