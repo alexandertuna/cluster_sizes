@@ -4,3 +4,4 @@ matplotlib
 mypy
 notebook
 tqdm
+pyarrow
