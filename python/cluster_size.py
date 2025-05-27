@@ -13,13 +13,14 @@ import tqdm
 mpl.rcParams['font.size'] = 11
 
 SUMMARIZE = False
+REFRESH = False
 
 # REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
 REGIONS = ["BarrelFlat"]
 # LAYERS = [0, 1, 2, 3, 4, 5, 6]
 LAYERS = [1, 2, 3, 4, 5, 6]
 # LAYERS = [6]
-MIN_PT = 0.6
+MIN_PT = 3 # 0.6
 PITCH_UM = 90
 PITCH_CM = PITCH_UM / 1000.0 / 10.0
 
@@ -37,7 +38,10 @@ def main():
     # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_02_12h00m00s.1muon_0p7gev.root")
     # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_08_13h00m00s.1muon_1p5gev.root")
     # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
-    fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_12_00h00m00s.10muon_0p5_5p0.root")
+    # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_12_00h00m00s.10muon_0p5_5p0.root")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n10/trackingNtuple.root")
+    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n100/trackingNtuple.2025_05_09_10h00m00s.ttbar_PU200.n100.root")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1000/trackingNtuple.2025_05_09_00h00m00s.ttbar_PU200.n1000.root")
     title = get_title(fname)
     data = Data(fname).data
     plotter = Plotter(data)
@@ -45,9 +49,14 @@ def main():
 
 
 def get_title(fname: Path) -> str:
-    basename = fname.stem
-    if "2025_04_12_00h00m00s.10muon_0p5_5p0" in basename:
+    if "2025_04_12_00h00m00s.10muon_0p5_5p0" in fname.stem:
         return "10 muons, $p_{T}$ range [0.5, 5.0], 50k events"
+    if "ttbar/n10/trackingNtuple.root" in str(fname):
+        return "ttbar PU200, 10 events"
+    if "2025_05_09_10h00m00s.ttbar_PU200.n100" in fname.stem:
+        return "ttbar PU200, 100 events"
+    if "2025_05_09_00h00m00s.ttbar_PU200.n1000" in fname.stem:
+        return "ttbar PU200, 1000 events"
     raise Exception(f"Unknown file name: {fname}")
 
 
@@ -96,14 +105,14 @@ class Plotter:
                 self.plot_tof(pdf)
                 self.plot_tof_vs_cosphi(pdf)
                 self.plot_cluster_size(pdf)
-                # self.plot_cluster_size_cdf(pdf)
+                self.plot_cluster_size_cdf(pdf)
                 self.plot_cluster_size_vs_rdphi(pdf)
                 # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
                 self.plot_cluster_size_vs_cosphi(pdf)
                 # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
                 self.plot_cluster_size_vs_pt(pdf)
 
-                self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
+                # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.2, 0.3])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.4])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.4, 0.5])
@@ -132,7 +141,8 @@ class Plotter:
 
 
     def plot_pt_eta_phi(self, pdf: PdfPages) -> None:
-        bins_pt = np.arange(0, 6, 0.05)
+        # bins_pt = np.arange(0, 6, 0.05)
+        bins_pt = np.arange(0, 20, 0.05)
         bins_etaphi = [
             np.arange(-3, 3, 0.1),
             np.arange(-3.2, 3.25, 0.1)
@@ -422,7 +432,8 @@ class Plotter:
 
     def plot_cluster_size_vs_pt(self, pdf: PdfPages, cdf=False, zaxis=Zaxis.NORMAL) -> None:
         bins = [
-            np.arange(0.6, 5.1, 0.2),
+            # np.arange(0.6, 5.1, 0.2),
+            np.arange(0.6, 15.1, 0.2),
             np.arange(-0.5, 17.5, 1),
         ]
         if zaxis not in Zaxis:
@@ -500,7 +511,8 @@ class Plotter:
     def plot_pt_vs_cosphi(self, pdf: PdfPages) -> None:
         bins = [
             np.arange(0.2, 1.01, 0.01),
-            np.arange(0.5, 2.0, 0.01),
+            # np.arange(0.5, 2.0, 0.01),
+            np.arange(0.5, 20.0, 0.01),
         ]
         mask_basic = \
             (self.data.ph2_simhit_pt > MIN_PT) & \
@@ -867,43 +879,39 @@ class Data:
         if not fname.exists():
             raise Exception("shit")        
         self.fname = fname
-        self.data = self.get_array()
-        self.decorate_array()
+        self.pname = fname.with_suffix(".parquet")
+        if REFRESH or not self.pname.exists():
+            self.data = self.get_array()
+            self.decorate_array()
+            self.drop_unused()
+            print(f"Saving {self.pname} ...")
+            ak.to_parquet(self.data, self.pname)
+        else:
+            print(f"Loading {self.pname}")
+            self.data = ak.from_parquet(self.pname)
 
 
     def get_array(self) -> ak.Array:
+        print(f"Opening {self.fname} ...")
         tree = uproot.open(f"{self.fname}:trackingNtuple/tree")
-        print(f"Got TTree: {tree}")
+        print("Loading branches ...")
         # print(sorted([br.name for br in tree.branches]))
         data = tree.arrays([
             'event',
-            'trk_pt', 'trk_eta', 'trk_phi',
-            'ph2_isBarrel', 'ph2_isLower', 'ph2_isUpper', 'ph2_isStack', 
-            'ph2_order', 'ph2_ring', 'ph2_rod', 'ph2_detId', 
-            'ph2_subdet', 'ph2_layer', 'ph2_side', 'ph2_module', 
-            'ph2_moduleType', 'ph2_trkIdx', 'ph2_onTrk_x', 'ph2_onTrk_y', 
-            'ph2_onTrk_z', 'ph2_onTrk_xx', 'ph2_onTrk_xy', 'ph2_onTrk_yy', 
-            'ph2_onTrk_yz', 'ph2_onTrk_zz', 'ph2_onTrk_zx', 'ph2_tcandIdx', 
-            'ph2_seeIdx', 'ph2_simHitIdx', 'ph2_simType', 'ph2_x', 'ph2_y', 
-            'ph2_z', 'ph2_xx', 'ph2_xy', 'ph2_yy', 
-            'ph2_yz', 'ph2_zz', 'ph2_zx', 'ph2_radL', 
-            'ph2_bbxi', 'ph2_usedMask', 'ph2_clustSize',
+            'ph2_isUpper', 'ph2_order', 'ph2_rod',
+            'ph2_layer', 'ph2_subdet', 'ph2_side',
+            'ph2_module', 'ph2_simHitIdx',
+            'ph2_x', 'ph2_y', 'ph2_z', 'ph2_clustSize',
             'simhit_x', 'simhit_y', 'simhit_z',
             'simhit_px', 'simhit_py', 'simhit_pz',
-            'simhit_tof', 'simhit_particle', 'simhit_simTrkIdx', 
-            'simhit_isUpper', 'simhit_isLower', 'simhit_layer',
-            'simhit_module', 'simhit_rod', 'simhit_order', 'simhit_side',
-            'sim_event', 'sim_bunchCrossing', 'sim_pdgId',
-            'sim_genPdgIds', 'sim_isFromBHadron', 
-            'sim_px', 'sim_py', 'sim_pz', 
-            'sim_pt', 'sim_eta', 'sim_phi',
-            'sim_parentVtxIdx', 'sim_decayVtxIdx', 'sim_simHitIdx',
+            'simhit_tof', 'simhit_simTrkIdx', 'simhit_particle',
+            'sim_px', 'sim_py', 'sim_pz', 'sim_pt',
         ])
         return data
     
 
     def decorate_array(self) -> None:
-        print("Decorating array")
+        print("Decorating array ...")
         self.data["simhit_pt"] = np.sqrt(self.data.simhit_px**2 + self.data.simhit_py**2)
         self.data["simhit_p"] = np.sqrt(self.data.simhit_px**2 + self.data.simhit_py**2 + self.data.simhit_pz**2)
         self.data["simhit_rt"] = np.sqrt(self.data.simhit_x**2 + self.data.simhit_y**2)
@@ -912,13 +920,11 @@ class Data:
         self.data["sim_p"] = np.sqrt(self.data.sim_px**2 + self.data.sim_py**2 + self.data.sim_pz**2)
         self.data["ph2_eta"] = eta(self.data.ph2_x, self.data.ph2_y, self.data.ph2_z)
         self.data["ph2_phi"] = phi(self.data.ph2_x, self.data.ph2_y)
-        # self.data["ph2_phi"] = np.atan2(self.data.ph2_y, self.data.ph2_x)
         self.data["ph2_rt"] = np.sqrt(self.data.ph2_x**2 + self.data.ph2_y**2)
         self.data["ph2_isBarrelFlat"] = (self.data.ph2_order == 0) & (self.data.ph2_side == 3)
         self.data["ph2_isBarrelTilt"] = (self.data.ph2_order == 0) & (self.data.ph2_side != 3)
         self.data["ph2_isEndcap"] = (self.data.ph2_order != 0)
         self.data["ph2_isInclusive"] = self.data.ph2_isBarrelFlat | self.data.ph2_isBarrelTilt | self.data.ph2_isEndcap
-        self.data["simhit_isBarrelFlat"] = (self.data.simhit_order == 0) & (self.data.simhit_side == 3)
         self.data["simhit_simtrk_pt"] = self.data.sim_pt[self.data.simhit_simTrkIdx]
         self.data["simhit_simtrk_p"] = self.data.sim_p[self.data.simhit_simTrkIdx]
         self.data["ph2_nsimhit"] = ak.num(self.data.ph2_simHitIdx, axis=-1)
@@ -945,6 +951,12 @@ class Data:
         self.data["ph2_simtrk_pt"] = ak.fill_none(self.data["ph2_simtrk_pt"], dne)
         self.data["ph2_simhit_rdphi"]  = self.data["ph2_simhit_rt"] * self.data["ph2_simhit_dphi"]
         self.data["ph2_simhit_rdphi"] = ak.fill_none(self.data.ph2_simhit_rdphi, -1)
+
+
+    def drop_unused(self) -> None:
+        print("Removing branches which arent necessary after decoration ...")
+        fields = [field for field in self.data.fields if field.startswith("ph2_")]
+        self.data = self.data[fields]
 
 
 def eta(x, y, z):
