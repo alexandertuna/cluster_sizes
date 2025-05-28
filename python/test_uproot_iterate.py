@@ -1,13 +1,12 @@
 import uproot
-from pathlib import Path
-import numpy as np
 import awkward as ak
+import numpy as np
+from pathlib import Path
 
 # constants
 MIN_PT = 3.0
-# FNAME = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n10/trackingNtuple.root")
-FNAME = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n100/trackingNtuple.2025_05_09_10h00m00s.ttbar_PU200.n100.root")
-TNAME = "trackingNtuple/tree"
+FILENAME = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n100/trackingNtuple.2025_05_09_10h00m00s.ttbar_PU200.n100.root")
+TREENAME = "trackingNtuple/tree"
 FIELDS = [
     'simhit_px', 'simhit_py', 'simhit_pz',
     'sim_px', 'sim_py', 'sim_pz', 
@@ -21,7 +20,7 @@ def main():
 
     # file chunker
     step_size = "1 GB"
-    iterator = uproot.iterate(f"{FNAME}:{TNAME}", expressions=FIELDS, step_size=step_size)
+    iterator = uproot.iterate(f"{FILENAME}:{TREENAME}", expressions=FIELDS, step_size=step_size)
 
     for it, data in enumerate(iterator):
 
