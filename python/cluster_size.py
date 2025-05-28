@@ -884,6 +884,7 @@ class Data:
             self.data = self.get_array()
             self.decorate_array()
             self.drop_unused()
+            self.filter_entries()
             print(f"Saving {self.pname} ...")
             ak.to_parquet(self.data, self.pname)
         else:
@@ -957,6 +958,11 @@ class Data:
         print("Removing branches which arent necessary after decoration ...")
         fields = [field for field in self.data.fields if field.startswith("ph2_")]
         self.data = self.data[fields]
+
+    def filter_entries(self) -> None:
+        print(f"Removing entries below pt = {MIN_PT} ...")
+        mask = self.data["ph2_simhit_pt"] > MIN_PT
+        self.data = self.data[mask]
 
 
 def eta(x, y, z):
