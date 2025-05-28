@@ -20,12 +20,16 @@ def main():
 
     # file chunker
     step_size = "1 GB"
-    iterator = uproot.iterate(f"{FILENAME}:{TREENAME}", expressions=FIELDS, step_size=step_size)
+    iterator = uproot.iterate(f"{FILENAME}:{TREENAME}",
+                              expressions=FIELDS,
+                              step_size=step_size,
+                              )
 
+    # iterate over chunks
     for it, data in enumerate(iterator):
 
         nph2 = len(ak.flatten(data['ph2_x']))
-        print(f"Got TTree: {data} with {nph2} entries")
+        print(f"Chunk: {nph2} hits {data}")
 
         # derived fields
         data["simhit_pt"] = np.sqrt(data.simhit_px**2 + data.simhit_py**2)
@@ -48,7 +52,7 @@ def main():
     data = ak.from_parquet("output_*parquet")
     nph2 = len(ak.flatten(data["ph2_x"]))
     print("")
-    print(f"Reloaded number of ph2 entries: {nph2}")
+    print(f"Reloaded number of ph2 hits: {nph2}")
 
 if __name__ == "__main__":
     main()
