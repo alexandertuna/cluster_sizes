@@ -11,9 +11,9 @@ rcParams["font.size"] = 16
 # FNAME_TRACKING = Path("../data/trackingNtuple.2025_04_23_00h00m00s.10muon_0p5_3p0.root")
 # FNAME_REF = Path("../data/muonGun/LSTNtuple.cutNA.root")
 # FNAME_NEW = Path("../data/muonGun/LSTNtuple.cut04.root")
-FNAME_TRACKING = Path("../data/trackingNtuple.2025_04_23_00h00m00s.10muon_0p5_3p0.root")
-FNAME_REF = Path("../data/muonGun/LSTNtuple.cutNA.root")
-FNAME_NEW = Path("../data/muonGun/LSTNtuple.cut04.root")
+FNAME_TRACKING = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1000/trackingNtuple.2025_05_09_00h00m00s.ttbar_PU200.n1000.root")
+FNAME_REF = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/RecoTracker/LSTCore/standalone/clustSize/ttbarPU200_n1e3/LSTNtuple.cutNA.root")
+FNAME_NEW = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/RecoTracker/LSTCore/standalone/clustSize/ttbarPU200_n1e3/LSTNtuple.cut04.root")
 BRANCHES = [
     "sim_trkNtupIdx",
     "sim_event",
@@ -53,9 +53,10 @@ def find_missing_tracks() -> tuple[list, list]:
         sim_idxs = compare(data_ref, data_new, idx)
         event_idx_of_interest.append(idx)
         sim_idxs_of_interest.append(sim_idxs)
-        if len(event_idx_of_interest) > 100:
+        if len(event_idx_of_interest) > 0:
             break
 
+    print("Finished finding missing tracks")
     return event_idx_of_interest, sim_idxs_of_interest
 
 
@@ -64,8 +65,6 @@ def inspect_hits(evts: list, sim_idxs: list, pdf: PdfPages):
     data = get_tracking_ntuple()
     for evt, sims in zip(evts, sim_idxs):
         for sim in sims:
-            if evt == 10:
-                print(len(data["ph2_layer"][evt]))
             sim_pt, sim_eta, sim_phi = [data["sim_pt"][evt][sim],
                                         data["sim_eta"][evt][sim],
                                         data["sim_phi"][evt][sim]]
@@ -148,7 +147,7 @@ def compare(ref: ak.Array, new: ak.Array, evt: int):
                                 ref["tc_eta"][evt][idx],
                                 ref["tc_phi"][evt][idx],
                                 ref["tc_type"][evt][idx]]
-            simIdx = ref["tc_matched_simIdx"][evt][idx][0]
+            simIdx = ref["tc_matched_simIdx"][evt][idx][0] if len(ref["tc_matched_simIdx"][evt][idx]) > 0 else -1
             tag = "<--" if tc == TC_TYPE else ""
             print(idx, "Ref:", format_params(pt, eta, phi), tc, simIdx, tag)
 
@@ -158,7 +157,7 @@ def compare(ref: ak.Array, new: ak.Array, evt: int):
                                 new["tc_eta"][evt][idx],
                                 new["tc_phi"][evt][idx],
                                 new["tc_type"][evt][idx]]
-            simIdx = new["tc_matched_simIdx"][evt][idx][0]
+            simIdx = new["tc_matched_simIdx"][evt][idx][0] if len(new["tc_matched_simIdx"][evt][idx]) > 0 else -1
             tag = "<--" if tc == TC_TYPE else ""
             tag = "<=====" if simIdx in simIdx_missing else tag
             print(idx, "New:", format_params(pt, eta, phi), tc, simIdx, tag)
@@ -198,12 +197,14 @@ def get_tracking_ntuple() -> dict:
             "ph2_z",
             "ph2_clustSize",
         ]
-        data = tree.arrays(BRS)
+        print("Reading tracking ntuple")
+        data = tree.arrays(BRS, entry_stop=1)
         data["ph2_nsimhit"] = ak.num(data["ph2_simHitIdx"], axis=-1)
         data["ph2_simHitIdxFirst"] = ak.firsts(data["ph2_simHitIdx"], axis=-1)
         data["ph2_eta"] = get_eta(data.ph2_x, data.ph2_y, data.ph2_z)
         data["ph2_phi"] = get_phi(data.ph2_x, data.ph2_y)
         data["ph2_simIdx"] = get_ph2_sim_idx(data)
+        print("Finished reading tracking ntuple")
         return data
 
 
@@ -215,7 +216,7 @@ def get_ph2_sim_idx(data):
     ph2_simIdxs = []
     for evt in tqdm.tqdm(range(len(data["ph2_simHitIdx"]))):
         ph2_simIdx = []
-        for ph2_idx in range(len(data["ph2_simHitIdx"][evt])):
+        for ph2_idx in tqdm.tqdm(range(len(data["ph2_simHitIdx"][evt]))):
             ph2_simHitIdxFirst = data["ph2_simHitIdxFirst"][evt][ph2_idx]
             for i_sim, sim_simHitIdxs in enumerate(data["sim_simHitIdx"][evt]):
                 if np.isin(ph2_simHitIdxFirst, sim_simHitIdxs):
