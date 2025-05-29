@@ -14,12 +14,12 @@ mpl.rcParams['font.size'] = 11
 
 SUMMARIZE = False
 REFRESH = False
+STEP_SIZE = "10 GB"
+TNAME = "trackingNtuple/tree"
 
 # REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
 REGIONS = ["BarrelFlat"]
-# LAYERS = [0, 1, 2, 3, 4, 5, 6]
 LAYERS = [1, 2, 3, 4, 5, 6]
-# LAYERS = [6]
 MIN_PT = 3 # 0.6
 PITCH_UM = 90
 PITCH_CM = PITCH_UM / 1000.0 / 10.0
@@ -40,8 +40,10 @@ def main():
     # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_10_00h00m00s.10muon_0p5_5p0.root")
     # fname = Path("/Users/alexandertuna/Downloads/cms/lst_playing/data/trackingNtuple.2025_04_12_00h00m00s.10muon_0p5_5p0.root")
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n10/trackingNtuple.root")
-    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n100/trackingNtuple.2025_05_09_10h00m00s.ttbar_PU200.n100.root")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n100/trackingNtuple.2025_05_09_10h00m00s.ttbar_PU200.n100.root")
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1000/trackingNtuple.2025_05_09_00h00m00s.ttbar_PU200.n1000.root")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e4/trackingNtuple.2025_05_23_00h00m00s.10muon_3p0_3p1.root")
+    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
     title = get_title(fname)
     data = Data(fname).data
     plotter = Plotter(data)
@@ -51,12 +53,16 @@ def main():
 def get_title(fname: Path) -> str:
     if "2025_04_12_00h00m00s.10muon_0p5_5p0" in fname.stem:
         return "10 muons, $p_{T}$ range [0.5, 5.0], 50k events"
+    if "2025_05_23_00h00m00s.10muon_3p0_3p1" in fname.stem:
+        return "10 muons, $p_{T}$ range [3.0, 3.1], 10k events"
     if "ttbar/n10/trackingNtuple.root" in str(fname):
         return "ttbar PU200, 10 events"
     if "2025_05_09_10h00m00s.ttbar_PU200.n100" in fname.stem:
         return "ttbar PU200, 100 events"
     if "2025_05_09_00h00m00s.ttbar_PU200.n1000" in fname.stem:
         return "ttbar PU200, 1000 events"
+    if "ttbar/n1e4" in str(fname):
+        return "ttbar PU200, 10k events"
     raise Exception(f"Unknown file name: {fname}")
 
 
@@ -87,6 +93,7 @@ class Plotter:
 
     def plot(self, title: str, pdfname: str) -> None:
         self.title = title
+        print(f"Writing plots at {pdfname} ...")
         with PdfPages(pdfname) as pdf:
 
             if SUMMARIZE:
@@ -102,15 +109,15 @@ class Plotter:
             else:
                 self.plot_title(title, pdf)
                 self.plot_pt_eta_phi(pdf)
-                self.plot_tof(pdf)
-                self.plot_tof_vs_cosphi(pdf)
+                # self.plot_tof(pdf)
+                # self.plot_tof_vs_cosphi(pdf)
                 self.plot_cluster_size(pdf)
-                self.plot_cluster_size_cdf(pdf)
-                self.plot_cluster_size_vs_rdphi(pdf)
+                # self.plot_cluster_size_cdf(pdf)
+                # self.plot_cluster_size_vs_rdphi(pdf)
                 # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
-                self.plot_cluster_size_vs_cosphi(pdf)
+                # self.plot_cluster_size_vs_cosphi(pdf)
                 # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
-                self.plot_cluster_size_vs_pt(pdf)
+                # self.plot_cluster_size_vs_pt(pdf)
 
                 # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.3, 0.5])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.2, 0.3])
@@ -120,8 +127,8 @@ class Plotter:
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.6, 0.7])
                 # # self.plot_cluster_size_vs_rdphi(pdf, cosphi=[0.7, 0.8])
                 # self.plot_cluster_size(pdf, cosphi=[0.3, 0.5])
-                self.plot_pt_vs_cosphi(pdf)
-                self.plot_simhit_dphi(pdf)
+                # self.plot_pt_vs_cosphi(pdf)
+                # self.plot_simhit_dphi(pdf)
                 # self.plot_simtrk_vs_simhit(pdf)
                 # self.plot_simhit_pt_and_p(pdf)
                 # self.plot_simhit_cosphi(pdf)
@@ -878,25 +885,68 @@ class Data:
     def __init__(self, fname: Path) -> None:
         if not fname.exists():
             raise Exception("shit")        
+
         self.fname = fname
-        self.pname = fname.with_suffix(".parquet")
-        if REFRESH or not self.pname.exists():
-            self.data = self.get_array()
-            self.decorate_array()
-            self.drop_unused()
-            self.filter_entries()
-            print(f"Saving {self.pname} ...")
-            ak.to_parquet(self.data, self.pname)
+        self.dname = fname.with_suffix(".dir")
+
+        if REFRESH or not self.dname.exists():
+            self.dname.mkdir(parents=True, exist_ok=True)
+            self.root_to_parquet()
+
+        print(f"Loading data from {self.dname} ...")
+        self.data = ak.from_parquet(self.dname)
+
+    def root_to_parquet(self) -> None:
+        print(f"Converting {self.fname} to parquet ...")
+        fields = [
+            'event',
+            'ph2_isUpper', 'ph2_order', 'ph2_rod',
+            'ph2_layer', 'ph2_subdet', 'ph2_side',
+            'ph2_module', 'ph2_moduleType', 'ph2_simHitIdx',
+            'ph2_x', 'ph2_y', 'ph2_z', 'ph2_clustSize',
+            'simhit_x', 'simhit_y', 'simhit_z',
+            'simhit_px', 'simhit_py', 'simhit_pz',
+            'simhit_tof', 'simhit_simTrkIdx', 'simhit_particle',
+            'sim_px', 'sim_py', 'sim_pz', 'sim_pt',
+        ]
+        if self.fname.is_file():
+            files = f"{self.fname}:{TNAME}"
+        elif self.fname.is_dir():
+            files = f"{self.fname.resolve()}/*.root:{TNAME}"
         else:
-            print(f"Loading {self.pname}")
-            self.data = ak.from_parquet(self.pname)
+            raise Exception(f"Invalid file or directory: {self.fname}")
+
+        iterator = uproot.iterate(files,
+                                  expressions=fields,
+                                  step_size=STEP_SIZE)
+        for it, data in enumerate(iterator):
+            self.root_to_parquet_step(data, it)
+
+    def root_to_parquet_step(self, data: ak.Array, it: int) -> None:
+        print(f"Processing step {it} ...")
+        data = self.decorate_array(data)
+        data = self.drop_unused(data)
+        data = self.filter_entries(data)
+        pname = self.dname / f"{it:04}.parquet"
+        print(f"Saving {pname} ...")
+        ak.to_parquet(data, pname)
+
+        # if REFRESH or not self.pname.exists():
+        #     self.data = self.get_array()
+        #     self.data = self.decorate_array(self.data)
+        #     self.drop_unused()
+        #     self.filter_entries()
+        #     print(f"Saving {self.pname} ...")
+        #     ak.to_parquet(self.data, self.pname)
+        # else:
+        #     print(f"Loading {self.pname}")
+        #     self.data = ak.from_parquet(self.pname)
 
 
     def get_array(self) -> ak.Array:
         print(f"Opening {self.fname} ...")
         tree = uproot.open(f"{self.fname}:trackingNtuple/tree")
         print("Loading branches ...")
-        # print(sorted([br.name for br in tree.branches]))
         data = tree.arrays([
             'event',
             'ph2_isUpper', 'ph2_order', 'ph2_rod',
@@ -911,58 +961,60 @@ class Data:
         return data
     
 
-    def decorate_array(self) -> None:
+    def decorate_array(self, data: ak.Array) -> ak.Array:
         print("Decorating array ...")
-        self.data["simhit_pt"] = np.sqrt(self.data.simhit_px**2 + self.data.simhit_py**2)
-        self.data["simhit_p"] = np.sqrt(self.data.simhit_px**2 + self.data.simhit_py**2 + self.data.simhit_pz**2)
-        self.data["simhit_rt"] = np.sqrt(self.data.simhit_x**2 + self.data.simhit_y**2)
-        self.data["simhit_cosphi"] = ((self.data.simhit_x * self.data.simhit_px) + (self.data.simhit_y * self.data.simhit_py)) / (self.data.simhit_pt * self.data.simhit_rt)
-        self.data["simhit_phi"] = np.atan2(self.data.simhit_y, self.data.simhit_x)
-        self.data["sim_p"] = np.sqrt(self.data.sim_px**2 + self.data.sim_py**2 + self.data.sim_pz**2)
-        self.data["ph2_eta"] = eta(self.data.ph2_x, self.data.ph2_y, self.data.ph2_z)
-        self.data["ph2_phi"] = phi(self.data.ph2_x, self.data.ph2_y)
-        self.data["ph2_rt"] = np.sqrt(self.data.ph2_x**2 + self.data.ph2_y**2)
-        self.data["ph2_isBarrelFlat"] = (self.data.ph2_order == 0) & (self.data.ph2_side == 3)
-        self.data["ph2_isBarrelTilt"] = (self.data.ph2_order == 0) & (self.data.ph2_side != 3)
-        self.data["ph2_isEndcap"] = (self.data.ph2_order != 0)
-        self.data["ph2_isInclusive"] = self.data.ph2_isBarrelFlat | self.data.ph2_isBarrelTilt | self.data.ph2_isEndcap
-        self.data["simhit_simtrk_pt"] = self.data.sim_pt[self.data.simhit_simTrkIdx]
-        self.data["simhit_simtrk_p"] = self.data.sim_p[self.data.simhit_simTrkIdx]
-        self.data["ph2_nsimhit"] = ak.num(self.data.ph2_simHitIdx, axis=-1)
-        self.data["ph2_simHitIdxFirst"] = ak.firsts(self.data.ph2_simHitIdx, axis=-1)
-        self.data["ph2_simhit_p"]       = self.data.simhit_p[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_pt"]      = self.data.simhit_pt[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_rt"]      = self.data.simhit_rt[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_phi"]     = self.data.simhit_phi[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_tof"]     = self.data.simhit_tof[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_cosphi"]  = self.data.simhit_cosphi[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_simTrkIdx"] = self.data.simhit_simTrkIdx[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simhit_dphi"] = dphi(self.data.ph2_phi, self.data.ph2_simhit_phi)
+        data["simhit_pt"] = np.sqrt(data.simhit_px**2 + data.simhit_py**2)
+        data["simhit_p"] = np.sqrt(data.simhit_px**2 + data.simhit_py**2 + data.simhit_pz**2)
+        data["simhit_rt"] = np.sqrt(data.simhit_x**2 + data.simhit_y**2)
+        data["simhit_cosphi"] = ((data.simhit_x * data.simhit_px) + (data.simhit_y * data.simhit_py)) / (data.simhit_pt * data.simhit_rt)
+        data["simhit_phi"] = np.atan2(data.simhit_y, data.simhit_x)
+        data["sim_p"] = np.sqrt(data.sim_px**2 + data.sim_py**2 + data.sim_pz**2)
+        data["ph2_eta"] = eta(data.ph2_x, data.ph2_y, data.ph2_z)
+        data["ph2_phi"] = phi(data.ph2_x, data.ph2_y)
+        data["ph2_rt"] = np.sqrt(data.ph2_x**2 + data.ph2_y**2)
+        data["ph2_isBarrelFlat"] = (data.ph2_order == 0) & (data.ph2_side == 3)
+        data["ph2_isBarrelTilt"] = (data.ph2_order == 0) & (data.ph2_side != 3)
+        data["ph2_isEndcap"] = (data.ph2_order != 0)
+        data["ph2_isInclusive"] = data.ph2_isBarrelFlat | data.ph2_isBarrelTilt | data.ph2_isEndcap
+        data["simhit_simtrk_pt"] = data.sim_pt[data.simhit_simTrkIdx]
+        data["simhit_simtrk_p"] = data.sim_p[data.simhit_simTrkIdx]
+        data["ph2_nsimhit"] = ak.num(data.ph2_simHitIdx, axis=-1)
+        data["ph2_simHitIdxFirst"] = ak.firsts(data.ph2_simHitIdx, axis=-1)
+        data["ph2_simhit_p"]       = data.simhit_p[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_pt"]      = data.simhit_pt[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_rt"]      = data.simhit_rt[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_phi"]     = data.simhit_phi[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_tof"]     = data.simhit_tof[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_cosphi"]  = data.simhit_cosphi[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_simTrkIdx"] = data.simhit_simTrkIdx[data.ph2_simHitIdxFirst]
+        data["ph2_simhit_dphi"] = dphi(data.ph2_phi, data.ph2_simhit_phi)
         dne = np.float32(0)
-        self.data["ph2_simhit_p"]      = ak.fill_none(self.data.ph2_simhit_p, dne)
-        self.data["ph2_simhit_pt"]     = ak.fill_none(self.data.ph2_simhit_pt, dne)
-        self.data["ph2_simhit_phi"]    = ak.fill_none(self.data.ph2_simhit_phi, dne)
-        self.data["ph2_simhit_tof"]    = ak.fill_none(self.data.ph2_simhit_tof, dne)
-        self.data["ph2_simhit_dphi"]   = ak.fill_none(self.data.ph2_simhit_dphi, dne)
-        self.data["ph2_simhit_cosphi"] = ak.fill_none(self.data.ph2_simhit_cosphi, dne)
-        self.data["ph2_simhit_simTrkIdx"] = ak.fill_none(self.data.ph2_simhit_simTrkIdx, -1)
-        self.data["ph2_simtrk_p"]  = self.data.simhit_simtrk_p[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simtrk_pt"] = self.data.simhit_simtrk_pt[self.data.ph2_simHitIdxFirst]
-        self.data["ph2_simtrk_p"]  = ak.fill_none(self.data["ph2_simtrk_p"], dne)
-        self.data["ph2_simtrk_pt"] = ak.fill_none(self.data["ph2_simtrk_pt"], dne)
-        self.data["ph2_simhit_rdphi"]  = self.data["ph2_simhit_rt"] * self.data["ph2_simhit_dphi"]
-        self.data["ph2_simhit_rdphi"] = ak.fill_none(self.data.ph2_simhit_rdphi, -1)
+        data["ph2_simhit_p"]      = ak.fill_none(data.ph2_simhit_p, dne)
+        data["ph2_simhit_pt"]     = ak.fill_none(data.ph2_simhit_pt, dne)
+        data["ph2_simhit_phi"]    = ak.fill_none(data.ph2_simhit_phi, dne)
+        data["ph2_simhit_tof"]    = ak.fill_none(data.ph2_simhit_tof, dne)
+        data["ph2_simhit_dphi"]   = ak.fill_none(data.ph2_simhit_dphi, dne)
+        data["ph2_simhit_cosphi"] = ak.fill_none(data.ph2_simhit_cosphi, dne)
+        data["ph2_simhit_simTrkIdx"] = ak.fill_none(data.ph2_simhit_simTrkIdx, -1)
+        data["ph2_simtrk_p"]  = data.simhit_simtrk_p[data.ph2_simHitIdxFirst]
+        data["ph2_simtrk_pt"] = data.simhit_simtrk_pt[data.ph2_simHitIdxFirst]
+        data["ph2_simtrk_p"]  = ak.fill_none(data["ph2_simtrk_p"], dne)
+        data["ph2_simtrk_pt"] = ak.fill_none(data["ph2_simtrk_pt"], dne)
+        data["ph2_simhit_rdphi"]  = data["ph2_simhit_rt"] * data["ph2_simhit_dphi"]
+        data["ph2_simhit_rdphi"] = ak.fill_none(data.ph2_simhit_rdphi, -1)
+        return data
 
 
-    def drop_unused(self) -> None:
+    def drop_unused(self, data: ak.Array) -> ak.Array:
         print("Removing branches which arent necessary after decoration ...")
-        fields = [field for field in self.data.fields if field.startswith("ph2_")]
-        self.data = self.data[fields]
+        fields = [field for field in data.fields if field.startswith("ph2_")]
+        return data[fields]
 
-    def filter_entries(self) -> None:
+
+    def filter_entries(self, data: ak.Array) -> ak.Array:
         print(f"Removing entries below pt = {MIN_PT} ...")
-        mask = self.data["ph2_simhit_pt"] > MIN_PT
-        self.data = self.data[mask]
+        mask = data["ph2_simhit_pt"] > MIN_PT
+        return data[mask]
 
 
 def eta(x, y, z):
