@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from enum import Enum
+from enum import auto, Enum
 import tqdm
 mpl.rcParams['font.size'] = 11
 
@@ -20,15 +20,58 @@ TNAME = "trackingNtuple/tree"
 # REGIONS = ["Inclusive", "BarrelFlat", "BarrelTilt", "Endcap"]
 REGIONS = ["BarrelFlat"]
 LAYERS = [1, 2, 3, 4, 5, 6]
-MIN_PT = 3 # 0.6
+MODULE_TYPES = {
+    1: [23, 24],
+    2: [23, 24],
+    3: [23, 24],
+    4: [25],
+    5: [25],
+    6: [25],
+}
+IS_UPPERS = {
+    23: [False],
+    24: [True],
+    25: [False, True],
+}
+MIN_PT = 3 # 10 # 3 # 0.6
 PITCH_UM = 90
 PITCH_CM = PITCH_UM / 1000.0 / 10.0
+
 
 class Zaxis(Enum):
     NORMAL = 1
     ONE_MINUS = 2
     ZOOMED = 3
 
+
+class ModuleType(Enum):
+    # NB: `auto()` starts at 1
+    # UNKNOWN = auto()
+    PXB = auto()
+    PXF = auto()
+    IB1 = auto()
+    IB2 = auto()
+    OB1 = auto()
+    OB2 = auto()
+    W1A = auto()
+    W2A = auto()
+    W3A = auto()
+    W1B = auto()
+    W2B = auto()
+    W3B = auto()
+    W4 = auto()
+    W5 = auto()
+    W6 = auto()
+    W7 = auto()
+    Ph1PXB = auto()
+    Ph1PXF = auto()
+    Ph2PXB = auto()
+    Ph2PXF = auto()
+    Ph2PXB3D = auto()
+    Ph2PXF3D = auto()
+    Ph2PSP = auto()
+    Ph2PSS = auto()
+    Ph2SS = auto()
 
 
 def main():
@@ -43,11 +86,22 @@ def main():
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n100/trackingNtuple.2025_05_09_10h00m00s.ttbar_PU200.n100.root")
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1000/trackingNtuple.2025_05_09_00h00m00s.ttbar_PU200.n1000.root")
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e4/trackingNtuple.2025_05_23_00h00m00s.10muon_3p0_3p1.root")
-    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e4/trackingNtuple.2025_05_23_00h00m00s.10muon_10p0_11p0.root")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e5/trackingNtuple.2025_05_29_00h00m00s.10muon_3p0_3p5.root")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
+    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/qcd/trackingNtuple.2025_06_03_00h00m00s.qcd.root")
     title = get_title(fname)
-    data = Data(fname).data
-    plotter = Plotter(data)
-    plotter.plot(title, "cluster_size.pdf")
+    # data = Data(fname).data
+    # plotter = Plotter(data)
+    # plotter.plot(title, "cluster_size.pdf")
+
+    fname = {}
+    fname["QCD"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/qcd/trackingNtuple.2025_06_03_00h00m00s.qcd.root")
+    fname["ttbar"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
+    fname["muonGun"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e5/trackingNtuple.2025_05_29_00h00m00s.10muon_3p0_3p5.root")
+    data = {name: Data(fn).data for name, fn in fname.items()}
+    plotter = PlotterOverlaid(data)
+    plotter.plot(title, "cluster_size_overlaid.pdf")
 
 
 def get_title(fname: Path) -> str:
@@ -55,6 +109,10 @@ def get_title(fname: Path) -> str:
         return "10 muons, $p_{T}$ range [0.5, 5.0], 50k events"
     if "2025_05_23_00h00m00s.10muon_3p0_3p1" in fname.stem:
         return "10 muons, $p_{T}$ range [3.0, 3.1], 10k events"
+    if "2025_05_29_00h00m00s.10muon_3p0_3p5" in fname.stem:
+        return "10 muons, $p_{T}$ range [3.0, 3.5], 100k events"
+    if "2025_05_23_00h00m00s.10muon_10p0_11p0" in fname.stem:
+        return "10 muons, $p_{T}$ range [10, 11], 10k events"
     if "ttbar/n10/trackingNtuple.root" in str(fname):
         return "ttbar PU200, 10 events"
     if "2025_05_09_10h00m00s.ttbar_PU200.n100" in fname.stem:
@@ -63,7 +121,18 @@ def get_title(fname: Path) -> str:
         return "ttbar PU200, 1000 events"
     if "ttbar/n1e4" in str(fname):
         return "ttbar PU200, 10k events"
+    if "2025_06_03_00h00m00s.qcd" in str(fname):
+        return "RelValQCD_Pt_1800_2400, 700 events"
     raise Exception(f"Unknown file name: {fname}")
+
+
+def title_blurb(layer: int, mtype: int, is_upper: bool) -> str:
+    lname = layer_name(layer)
+    mname = module_name(mtype)
+    uname = upper_name(mtype, is_upper)
+    if uname:
+        return f"{lname}, {mname} ({uname})"
+    return f"{lname}, {mname}"
 
 
 def region_name(region: str) -> str:
@@ -83,7 +152,78 @@ def layer_name(layer: int) -> str:
         return "all layers"
     return f"layer {layer}"
 
+def module_name(mtype: int) -> str:
+    if mtype == 23:
+        return "PS pixel"
+    if mtype == 24:
+        return "PS strip"
+    if mtype == 25:
+        return "2S"
+    raise Exception(f"Unknown module type: {mtype}")
 
+def upper_name(mtype: int, is_upper: bool) -> str:
+    if mtype in [23, 24]:
+        return ""
+    if mtype == 25:
+        return "upper" if is_upper else "lower"
+    raise Exception(f"Unknown module type: {mtype} and upper: {is_upper}")
+
+
+class PlotterOverlaid:
+
+    def __init__(self, data: dict[ak.Array]) -> None:
+        self.data = data
+
+
+    def plot(self, title: str, pdfname: str) -> None:
+        self.title = title
+        print(f"Writing plots at {pdfname} ...")
+        with PdfPages(pdfname) as pdf:
+            self.plot_cluster_size(pdf)
+            self.plot_cluster_size_cdf(pdf)
+
+
+    def plot_cluster_size(self, pdf: PdfPages) -> None:
+        bins = np.arange(-0.5, 24.5, 1)
+        color = {"muonGun": "black", "ttbar": "red", "QCD": "blue"}
+        for region in REGIONS:
+            reg = region_name(region)
+            presel = {}
+            for name, data in self.data.items():
+                presel[name] = \
+                    (data["ph2_simhit_pt"] > MIN_PT) & \
+                    (data["ph2_simhit_p"] > 0.5 * data["ph2_simtrk_p"]) & \
+                    (data[f"ph2_is{region}"])
+            for layer in LAYERS:
+                print(f"Cluster size plots for {layer=}")
+                for mtype in MODULE_TYPES[layer]:
+                    for is_upper in IS_UPPERS[mtype]:
+                        mask, total = {}, {}
+                        for name, data in self.data.items():
+                            mask[name] = presel[name] \
+                                & ((layer == 0) | (data["ph2_layer"] == layer)) \
+                                & (data["ph2_moduleType"] == mtype) \
+                                & (data["ph2_isUpper"] == is_upper)
+                            total[name] = ak.sum(mask[name])
+                        blurb = title_blurb(layer, mtype, is_upper)
+                        fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+                        for row, (name, data) in enumerate(self.data.items()):
+                            for ax in axs:
+                                ax.hist(ak.flatten(data["ph2_clustSize"][mask[name]]), bins=bins, density=True, color=color[name], edgecolor=color[name], facecolor="none")
+                                ax.set_title(f"All hits, {reg}, {blurb}")
+                                ax.set_xlabel("Cluster size")
+                                ax.set_ylabel("Hits (ph2_*)")
+                                ax.tick_params(right=True, top=True)
+                                mean = ak.mean(data["ph2_clustSize"][mask[name]])
+                                ax.text(0.7, 0.9 - 0.1*row, f"{name} mean = {mean:.2f}", transform=ax.transAxes, fontsize=8, color=color[name])
+                            if total[name] > 0:
+                                axs[1].semilogy()
+                        pdf.savefig()
+                        plt.close()
+
+
+    def plot_cluster_size_cdf(self, pdf: PdfPages) -> None:
+        pass
 
 class Plotter:
 
@@ -112,8 +252,8 @@ class Plotter:
                 # self.plot_tof(pdf)
                 # self.plot_tof_vs_cosphi(pdf)
                 self.plot_cluster_size(pdf)
-                # self.plot_cluster_size_cdf(pdf)
-                # self.plot_cluster_size_vs_rdphi(pdf)
+                self.plot_cluster_size_cdf(pdf)
+                self.plot_cluster_size_vs_rdphi(pdf)
                 # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
                 # self.plot_cluster_size_vs_cosphi(pdf)
                 # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
@@ -149,7 +289,7 @@ class Plotter:
 
     def plot_pt_eta_phi(self, pdf: PdfPages) -> None:
         # bins_pt = np.arange(0, 6, 0.05)
-        bins_pt = np.arange(0, 20, 0.05)
+        bins_pt = np.arange(0, 25, 0.05)
         bins_etaphi = [
             np.arange(-3, 3, 0.1),
             np.arange(-3.2, 3.25, 0.1)
@@ -193,23 +333,28 @@ class Plotter:
     def plot_tof(self, pdf: PdfPages) -> None:
         bins = np.arange(-0.5, 21.5, 0.1)
         for region in REGIONS:
-            reg = region_name(region)
+            rname = region_name(region)
             _mask = self.data[f"ph2_is{region}"]
             for layer in LAYERS:
-                mask = _mask & ((layer == 0) | (self.data.ph2_layer == layer))
-                total = ak.sum(mask)
-                lay = layer_name(layer)
-                fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
-                for ax in axs:
-                    ax.hist(ak.flatten(self.data.ph2_simhit_tof[mask]), bins=bins)
-                    ax.set_title(f"All hits, {reg}, {lay}")
-                    ax.set_xlabel("Time-of-flight (TOF) [ns]")
-                    ax.set_ylabel("Hits (ph2_*)")
-                    ax.tick_params(right=True, top=True)
-                if total > 0:
-                    axs[1].semilogy()
-                pdf.savefig()
-                plt.close()
+                for mtype in MODULE_TYPES[layer]:
+                    for is_upper in IS_UPPERS[mtype]:
+                        mask = _mask \
+                            & ((layer == 0) | (self.data.ph2_layer == layer)) \
+                            & (self.data["ph2_moduleType"] == mtype) \
+                            & (self.data["ph2_isUpper"] == is_upper)
+                        total = ak.sum(mask)
+                        blurb = title_blurb(layer, mtype, is_upper)
+                        fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+                        for ax in axs:
+                            ax.hist(ak.flatten(self.data.ph2_simhit_tof[mask]), bins=bins)
+                            ax.set_title(f"All hits, {rname}, {blurb}")
+                            ax.set_xlabel("Time-of-flight (TOF) [ns]")
+                            ax.set_ylabel("Hits (ph2_*)")
+                            ax.tick_params(right=True, top=True)
+                        if total > 0:
+                            axs[1].semilogy()
+                        pdf.savefig()
+                        plt.close()
 
 
     def plot_tof_vs_cosphi(self, pdf: PdfPages) -> None:
@@ -244,7 +389,7 @@ class Plotter:
 
     def plot_cluster_size(self, pdf: PdfPages, cosphi=[-1, 1]) -> None:
         cosphi_min, cosphi_max = cosphi
-        bins = np.arange(-0.5, 34.5, 1)
+        bins = np.arange(-0.5, 24.5, 1)
         for region in REGIONS:
             reg = region_name(region)
             _mask = \
@@ -254,27 +399,33 @@ class Plotter:
                 (self.data.ph2_simhit_cosphi <= cosphi_max) & \
                 self.data[f"ph2_is{region}"]
             for layer in LAYERS:
-                mask = _mask & ((layer == 0) | (self.data.ph2_layer == layer))
-                total = ak.sum(mask)
-                lay = layer_name(layer)
-                fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
-                for ax in axs:
-                    ax.hist(ak.flatten(self.data.ph2_clustSize[mask]), bins=bins)
-                    ax.set_title(f"All hits, {reg}, {lay}")
-                    ax.set_xlabel("Cluster size")
-                    ax.set_ylabel("Hits (ph2_*)")
-                    ax.tick_params(right=True, top=True)
-                    if cosphi != [-1, 1]:
-                        ax.text(0.5, 0.9, f"cos($\\phi$) in [{cosphi_min}, {cosphi_max}]", transform=ax.transAxes, ha="center")
-                if total > 0:
-                    axs[1].semilogy()
-                pdf.savefig()
-                plt.close()
+                for mtype in MODULE_TYPES[layer]:
+                    for is_upper in IS_UPPERS[mtype]:
+                        mask = _mask \
+                            & ((layer == 0) | (self.data.ph2_layer == layer)) \
+                            & (self.data["ph2_moduleType"] == mtype) \
+                            & (self.data["ph2_isUpper"] == is_upper)
+                        total = ak.sum(mask)
+                        blurb = title_blurb(layer, mtype, is_upper)
+                        fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+                        for ax in axs:
+                            ax.hist(ak.flatten(self.data.ph2_clustSize[mask]), bins=bins)
+                            ax.set_title(f"All hits, {reg}, {blurb}")
+                            ax.set_xlabel("Cluster size")
+                            ax.set_ylabel("Hits (ph2_*)")
+                            ax.tick_params(right=True, top=True)
+                            ax.text(0.7, 0.9, f"Mean = {ak.mean(self.data.ph2_clustSize[mask]):.2f}", transform=ax.transAxes, fontsize=8)
+                            if cosphi != [-1, 1]:
+                                ax.text(0.5, 0.9, f"cos($\\phi$) in [{cosphi_min}, {cosphi_max}]", transform=ax.transAxes, ha="center")
+                        if total > 0:
+                            axs[1].semilogy()
+                        pdf.savefig()
+                        plt.close()
 
 
     def plot_cluster_size_cdf(self, pdf: PdfPages) -> None:
 
-        bins = np.arange(-0.5, 19.5, 1)
+        bins = np.arange(-0.5, 17.5, 1)
         mask_basic = \
             (self.data.ph2_simhit_pt > MIN_PT) & \
             (self.data.ph2_simhit_p > 0.5 * self.data.ph2_simtrk_p) & \
@@ -286,29 +437,34 @@ class Plotter:
             mask_region = mask_basic & self.data[f"ph2_is{region}"]
 
             for layer in LAYERS:
+                for mtype in MODULE_TYPES[layer]:
+                    for is_upper in IS_UPPERS[mtype]:
 
-                mask = mask_region & ((layer == 0) | (self.data.ph2_layer == layer))
-                total = ak.sum(mask)
-                lay = layer_name(layer)
+                        mask = mask_region \
+                            & ((layer == 0) | (self.data.ph2_layer == layer)) \
+                            & (self.data["ph2_moduleType"] == mtype) \
+                            & (self.data["ph2_isUpper"] == is_upper)
+                        total = ak.sum(mask)
 
-                hist, bin_edges = np.histogram(ak.flatten(self.data.ph2_clustSize[mask]), bins=bins, density=(total > 0))
-                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
+                        hist, bin_edges = np.histogram(ak.flatten(self.data.ph2_clustSize[mask]), bins=bins, density=(total > 0))
+                        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
 
-                cdf = np.cumsum(hist * np.diff(bin_edges))
+                        cdf = np.cumsum(hist * np.diff(bin_edges))
 
-                fig, axs = plt.subplots(ncols=2, figsize=(12, 4))
-                fig.subplots_adjust(wspace=0.25)
-                for ax in axs:
-                    ax.plot(bin_centers, cdf, marker=".")
-                    ax.set_xlabel("Cluster size")
-                    ax.set_ylabel("CDF")
-                    ax.set_title(f"{reg} hits, {lay},  sim. track > {MIN_PT} GeV")
-                    ax.tick_params(right=True, top=True)
-                    ax.grid()
-                axs[1].set_ylim([0.99, 1.0])
+                        blurb = title_blurb(layer, mtype, is_upper)
+                        fig, axs = plt.subplots(ncols=2, figsize=(12, 4))
+                        fig.subplots_adjust(wspace=0.25)
+                        for ax in axs:
+                            ax.plot(bin_centers, cdf, marker=".")
+                            ax.set_xlabel("Cluster size")
+                            ax.set_ylabel("CDF")
+                            ax.set_title(f"{reg} hits, {blurb},  sim. track > {MIN_PT} GeV", fontsize=10)
+                            ax.tick_params(right=True, top=True)
+                            ax.grid()
+                        axs[1].set_ylim([0.98, 1.0])
 
-                pdf.savefig()
-                plt.close()
+                        pdf.savefig()
+                        plt.close()
         
 
 
