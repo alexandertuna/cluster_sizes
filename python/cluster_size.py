@@ -88,20 +88,20 @@ def main():
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e4/trackingNtuple.2025_05_23_00h00m00s.10muon_3p0_3p1.root")
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e4/trackingNtuple.2025_05_23_00h00m00s.10muon_10p0_11p0.root")
     # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e5/trackingNtuple.2025_05_29_00h00m00s.10muon_3p0_3p5.root")
-    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
-    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/qcd/trackingNtuple.2025_06_03_00h00m00s.qcd.root")
+    fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
+    # fname = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/qcd/trackingNtuple.2025_06_03_00h00m00s.qcd.root")
     title = get_title(fname)
-    # data = Data(fname).data
-    # plotter = Plotter(data)
-    # plotter.plot(title, "cluster_size.pdf")
+    data = Data(fname).data
+    plotter = Plotter(data)
+    plotter.plot(title, "cluster_size.pdf")
 
     fname = {}
     fname["QCD"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/qcd/trackingNtuple.2025_06_03_00h00m00s.qcd.root")
-    fname["ttbar"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
+    fname["ttbar PU200"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/ttbar/n1e4/output/")
     fname["muonGun"] = Path("/ceph/users/atuna/CMSSW_15_1_0_pre2/src/muonGun/n1e5/trackingNtuple.2025_05_29_00h00m00s.10muon_3p0_3p5.root")
-    data = {name: Data(fn).data for name, fn in fname.items()}
-    plotter = PlotterOverlaid(data)
-    plotter.plot(title, "cluster_size_overlaid.pdf")
+    # data = {name: Data(fn).data for name, fn in fname.items()}
+    # plotter = PlotterOverlaid(data)
+    # plotter.plot(title, "cluster_size_overlaid.pdf")
 
 
 def get_title(fname: Path) -> str:
@@ -185,15 +185,17 @@ class PlotterOverlaid:
 
     def plot_cluster_size(self, pdf: PdfPages) -> None:
         bins = np.arange(-0.5, 24.5, 1)
-        color = {"muonGun": "black", "ttbar": "red", "QCD": "blue"}
+        color = {"muonGun": "black", "ttbar PU200": "red", "QCD": "blue"}
         for region in REGIONS:
             reg = region_name(region)
+
             presel = {}
             for name, data in self.data.items():
                 presel[name] = \
                     (data["ph2_simhit_pt"] > MIN_PT) & \
                     (data["ph2_simhit_p"] > 0.5 * data["ph2_simtrk_p"]) & \
                     (data[f"ph2_is{region}"])
+
             for layer in LAYERS:
                 print(f"Cluster size plots for {layer=}")
                 for mtype in MODULE_TYPES[layer]:
@@ -205,25 +207,73 @@ class PlotterOverlaid:
                                 & (data["ph2_moduleType"] == mtype) \
                                 & (data["ph2_isUpper"] == is_upper)
                             total[name] = ak.sum(mask[name])
+
                         blurb = title_blurb(layer, mtype, is_upper)
                         fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
                         for row, (name, data) in enumerate(self.data.items()):
                             for ax in axs:
-                                ax.hist(ak.flatten(data["ph2_clustSize"][mask[name]]), bins=bins, density=True, color=color[name], edgecolor=color[name], facecolor="none")
+                                ax.hist(ak.flatten(data["ph2_clustSize"][mask[name]]), bins=bins, density=True, color=color[name], histtype="step", linewidth=1.5)
                                 ax.set_title(f"All hits, {reg}, {blurb}")
                                 ax.set_xlabel("Cluster size")
-                                ax.set_ylabel("Hits (ph2_*)")
+                                ax.set_ylabel("Hits, normalized (ph2_*)")
                                 ax.tick_params(right=True, top=True)
                                 mean = ak.mean(data["ph2_clustSize"][mask[name]])
-                                ax.text(0.7, 0.9 - 0.1*row, f"{name} mean = {mean:.2f}", transform=ax.transAxes, fontsize=8, color=color[name])
+                                ax.text(0.63, 0.9 - 0.07*row, f"{name} mean = {mean:.2f}", transform=ax.transAxes, fontsize=8, color=color[name])
                             if total[name] > 0:
                                 axs[1].semilogy()
+
+                        fig.subplots_adjust(wspace=0.30, right=0.95, left=0.10, bottom=0.15)
                         pdf.savefig()
                         plt.close()
 
 
     def plot_cluster_size_cdf(self, pdf: PdfPages) -> None:
-        pass
+        bins = np.arange(-0.5, 15.5, 1)
+        color = {"muonGun": "black", "ttbar PU200": "red", "QCD": "blue"}
+        for region in REGIONS:
+            reg = region_name(region)
+
+            presel = {}
+            for name, data in self.data.items():
+                presel[name] = \
+                    (data["ph2_simhit_pt"] > MIN_PT) & \
+                    (data["ph2_simhit_p"] > 0.5 * data["ph2_simtrk_p"]) & \
+                    (data[f"ph2_is{region}"])
+
+            for layer in LAYERS:
+                print(f"Cluster size plots for {layer=}")
+                for mtype in MODULE_TYPES[layer]:
+                    for is_upper in IS_UPPERS[mtype]:
+                        mask, total = {}, {}
+                        hist, cdf = {}, {}
+                        for name, data in self.data.items():
+                            mask[name] = presel[name] \
+                                & ((layer == 0) | (data["ph2_layer"] == layer)) \
+                                & (data["ph2_moduleType"] == mtype) \
+                                & (data["ph2_isUpper"] == is_upper)
+                            total[name] = ak.sum(mask[name])
+                            hist[name], bin_edges = np.histogram(ak.flatten(data["ph2_clustSize"][mask[name]]), bins=bins, density=(total[name] > 0))
+                            cdf[name] = np.cumsum(hist[name] * np.diff(bin_edges))
+                            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
+
+                        fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+                        blurb = title_blurb(layer, mtype, is_upper)
+                        for row, (name, data) in enumerate(self.data.items()):
+                            for ax in axs:
+                                ax.plot(bin_centers, cdf[name], marker=".", color=color[name])
+                                ax.set_xlabel("Cluster size")
+                                ax.set_ylabel("CDF")
+                                ax.set_title(f"{reg} hits, {blurb},  sim. track > {MIN_PT} GeV", fontsize=10)
+                                ax.tick_params(right=True, top=True)
+                                ax.grid()
+                                ax.text(0.60, 0.5 - 0.07*row, f"{name}", transform=ax.transAxes, fontsize=16, color=color[name])
+                        axs[1].set_ylim([0.98, 1.0])
+
+                        fig.subplots_adjust(wspace=0.30, right=0.95, left=0.10, bottom=0.15)
+                        pdf.savefig()
+                        plt.close()
+
+
 
 class Plotter:
 
@@ -248,12 +298,13 @@ class Plotter:
             
             else:
                 self.plot_title(title, pdf)
-                self.plot_pt_eta_phi(pdf)
+                # self.plot_pt_eta_phi(pdf)
                 # self.plot_tof(pdf)
                 # self.plot_tof_vs_cosphi(pdf)
-                self.plot_cluster_size(pdf)
-                self.plot_cluster_size_cdf(pdf)
-                self.plot_cluster_size_vs_rdphi(pdf)
+                # self.plot_cluster_size(pdf)
+                # self.plot_cluster_size_cdf(pdf)
+                self.plot_cluster_size_grouped(pdf)
+                # self.plot_cluster_size_vs_rdphi(pdf)
                 # self.plot_cluster_size_vs_rdphi(pdf, cdf=True)
                 # self.plot_cluster_size_vs_cosphi(pdf)
                 # self.plot_cluster_size_vs_cosphi(pdf, cdf=True)
@@ -466,6 +517,84 @@ class Plotter:
                         pdf.savefig()
                         plt.close()
         
+
+    def plot_cluster_size_grouped(self, pdf: PdfPages) -> None:
+
+        bins = np.arange(-0.5, 24.5, 1)
+
+        for region in REGIONS:
+
+            reg = region_name(region)
+
+            mask_all = (self.data[f"ph2_is{region}"])
+            mask_hipt = mask_all & (self.data["ph2_simhit_pt"] > MIN_PT) & (self.data["ph2_simhit_p"] > 0.5 * self.data["ph2_simtrk_p"])
+            mask_lopt = mask_all & (self.data["ph2_simhit_pt"] < MIN_PT) & (self.data["ph2_simhit_p"] > 0.5 * self.data["ph2_simtrk_p"])
+            mask_rest = mask_all & (self.data["ph2_simhit_p"] < 0.5 * self.data["ph2_simtrk_p"])
+            total = ak.sum(mask_all)
+
+            for layer in LAYERS:
+
+                for mtype in MODULE_TYPES[layer]:
+
+                    for is_upper in IS_UPPERS[mtype]:
+
+                        here = ((layer == 0) | (self.data["ph2_layer"] == layer)) \
+                            & (self.data["ph2_moduleType"] == mtype) \
+                            & (self.data["ph2_isUpper"] == is_upper)
+                        blurb = title_blurb(layer, mtype, is_upper)
+
+                        color = {
+                            "all": "black",
+                            "hipt": "red",
+                            "lopt": "blue",
+                            "rest": "green",
+                        }
+
+                        mean = {
+                            "all": ak.mean(self.data["ph2_clustSize"][here & mask_all]),
+                            "hipt": ak.mean(self.data["ph2_clustSize"][here & mask_hipt]),
+                            "lopt": ak.mean(self.data["ph2_clustSize"][here & mask_lopt]),
+                            "rest": ak.mean(self.data["ph2_clustSize"][here & mask_rest]),
+                        }
+
+                        simhit_pt = "$p_T^\\text{sim hit}$"
+                        simhit_p = "$p^\\text{sim hit}$"
+                        simtrk_p = "$p^\\text{sim track}$"
+                        label = {
+                            "all": f"All clusters",
+                            "hipt": f"{simhit_pt} > {MIN_PT} GeV, {simhit_p} > 0.5 * {simtrk_p}",
+                            "lopt": f"{simhit_pt} < {MIN_PT} GeV, {simhit_p} > 0.5 * {simtrk_p}",
+                            "rest": f"{simhit_p} < 0.5 * {simtrk_p}",
+                        }
+
+                        fig, axs = plt.subplots(ncols=2, figsize=(10, 4))
+                        for ax in axs:
+                            args = {"bins": bins, "histtype": "step", "linewidth": 1.5}
+                            ax.hist(ak.flatten(self.data["ph2_clustSize"][here & mask_all]), color=color["all"], **args)
+                            ax.hist(ak.flatten(self.data["ph2_clustSize"][here & mask_hipt]), color=color["hipt"], **args)
+                            ax.hist(ak.flatten(self.data["ph2_clustSize"][here & mask_lopt]), color=color["lopt"], **args)
+                            ax.hist(ak.flatten(self.data["ph2_clustSize"][here & mask_rest]), color=color["rest"], **args)
+                            ax.set_title(f"Hits, {reg}, {blurb}")
+                            ax.set_xlabel("Cluster size")
+                            ax.set_ylabel("Hits (ph2_*)")
+                            ax.tick_params(right=True, top=True)
+                            args = {"transform": ax.transAxes, "fontsize": 10}
+                            xtext, ytext, dx, dy = 0.3, 0.9, 0.5, 0.06
+                            ax.text(xtext, ytext - 0*dy, label["all"], color=color["all"], **args)
+                            ax.text(xtext, ytext - 1*dy, label["hipt"], color=color["hipt"], **args)
+                            ax.text(xtext, ytext - 2*dy, label["lopt"], color=color["lopt"], **args)
+                            ax.text(xtext, ytext - 3*dy, label["rest"], color=color["rest"], **args)
+                            ax.text(xtext+dx, ytext - 4*dy, "Mean:", color=color["all"], **args)
+                            ax.text(xtext+dx, ytext - 5*dy, f'{mean["all"]:.2f}', color=color["all"], **args)
+                            ax.text(xtext+dx, ytext - 6*dy, f'{mean["hipt"]:.2f}', color=color["hipt"], **args)
+                            ax.text(xtext+dx, ytext - 7*dy, f'{mean["lopt"]:.2f}', color=color["lopt"], **args)
+                            ax.text(xtext+dx, ytext - 8*dy, f'{mean["rest"]:.2f}', color=color["rest"], **args)
+                        if total > 0:
+                            axs[1].semilogy()
+
+                        fig.subplots_adjust(wspace=0.30, right=0.95, left=0.10, bottom=0.15)
+                        pdf.savefig()
+                        plt.close()
 
 
     def plot_cluster_size_vs_rdphi(self, pdf: PdfPages, cosphi=[-1, 1], cdf=False) -> None:
